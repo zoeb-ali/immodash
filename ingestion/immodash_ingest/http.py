@@ -9,7 +9,7 @@ from pathlib import Path
 import requests
 
 log = logging.getLogger(__name__)
-USER_AGENT = "ImmoDash/0.1 (+https://github.com/zoeb7184; open-data research project)"
+USER_AGENT = "ImmoDash/0.1 (+https://github.com/zoeb-ali; open-data research project)"
 
 
 def download(url: str, dest: Path, *, retries: int = 3, timeout: int = 60) -> Path:

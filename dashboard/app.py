@@ -382,7 +382,7 @@ def footer() -> html.Div:
         + [html.Div(f"{s['publisher']} · {s['licence']}") for s in srcs]
         + [html.Div("Affordability uses stated assumptions (60 m², 2 residents); asking-rent estimates outside "
                     "the 37 GREIX cities are modelled, not observed."),
-           html.Div("Built by Zoeb Ali Khan · github.com/zoeb7184 · zoeb7184.github.io")],
+           html.Div("Built by Zoeb Ali Khan · github.com/zoeb-ali · zoeb-ali.github.io")],
         className="footer",
     )
 

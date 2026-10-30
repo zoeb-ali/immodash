@@ -145,8 +145,8 @@ export default function Methodology() {
               <li><b style={{ color: "var(--ink)" }}>Product:</b> FastAPI, Next.js, Plotly Dash, CI/CD with GitHub Actions</li>
             </ul>
             <div className="hero-cta" style={{ marginTop: 0 }}>
-              <a className="btn" href="https://github.com/zoeb7184/immodash">View the source</a>
-              <a className="textlink" href="https://zoeb7184.github.io">Portfolio</a>
+              <a className="btn" href="https://github.com/zoeb-ali/immodash">View the source</a>
+              <a className="textlink" href="https://zoeb-ali.github.io">Portfolio</a>
             </div>
           </div>
           <div className="reveal" id="sources" style={{ scrollMarginTop: 96 }}>

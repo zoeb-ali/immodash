@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "ImmoDash: map of Germany's 400 districts coloured by asking rent" }],
   },
   twitter: { card: "summary_large_image", title: "ImmoDash: what renting in Germany really costs", images: ["/og.png"] },
-  authors: [{ name: "Zoeb Ali Khan", url: "https://zoeb7184.github.io" }],
+  authors: [{ name: "Zoeb Ali Khan", url: "https://zoeb-ali.github.io" }],
   description:
     "An interactive guide to German rents: how fast asking rents are rising in 37 cities, what a flat costs against local incomes, where the market is tightest, and a 12-month outlook. Rebuilt every week from open data.",
 };

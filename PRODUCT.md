@@ -28,7 +28,7 @@ Every figure comes from official and academic open data (Zensus 2022, GREIX, Bun
 - No user accounts, no tracking, no personal data.
 
 ## Brand Commitments
-- Name: ImmoDash. Built by Zoeb Ali Khan; source at github.com/zoeb7184/immodash, portfolio at zoeb7184.github.io.
+- Name: ImmoDash. Built by Zoeb Ali Khan; source at github.com/zoeb-ali/immodash, portfolio at zoeb-ali.github.io.
 - Voice: plain English, concrete numbers, no hype. No em or en dashes in visible copy.
 - Data licences must be credited (dl-de/by-2-0 for Statistische Ämter and BKG).
 

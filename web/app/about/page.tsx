@@ -121,9 +121,9 @@ export default function About() {
               pipeline, the models, the API and this website. It is an independent project and not affiliated with any of the data providers.
             </p>
             <div className="hero-cta" style={{ marginTop: 20 }}>
-              <a className="btn" href="https://zoeb7184.github.io">Portfolio</a>
+              <a className="btn" href="https://zoeb-ali.github.io">Portfolio</a>
               <a className="textlink" href="https://linkedin.com/in/zoeb-ali-khan">LinkedIn <ArrowRight size={14} weight="bold" aria-hidden /></a>
-              <a className="textlink" href="https://github.com/zoeb7184/immodash">Source code <ArrowRight size={14} weight="bold" aria-hidden /></a>
+              <a className="textlink" href="https://github.com/zoeb-ali/immodash">Source code <ArrowRight size={14} weight="bold" aria-hidden /></a>
             </div>
           </div>
         </div>

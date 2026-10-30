@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowUpRight, GithubLogo, Globe, LinkedinLogo } from "@phosphor-icons/react/dist/ssr";
 import { monthLong } from "@/lib/format";
 
-const REPO = "https://github.com/zoeb7184/immodash";
+const REPO = "https://github.com/zoeb-ali/immodash";
 
 const COLUMNS: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [
   { title: "Explore", links: [
@@ -16,8 +16,8 @@ const COLUMNS: { title: string; links: { href: string; label: string; external?:
     { href: REPO, label: "Source code", external: true }, { href: `${REPO}/issues`, label: "Report an issue", external: true },
   ] },
   { title: "Author", links: [
-    { href: "https://zoeb7184.github.io", label: "Portfolio", external: true }, { href: "https://linkedin.com/in/zoeb-ali-khan", label: "LinkedIn", external: true },
-    { href: "https://github.com/zoeb7184", label: "GitHub", external: true },
+    { href: "https://zoeb-ali.github.io", label: "Portfolio", external: true }, { href: "https://linkedin.com/in/zoeb-ali-khan", label: "LinkedIn", external: true },
+    { href: "https://github.com/zoeb-ali", label: "GitHub", external: true },
   ] },
 ];
 
@@ -38,7 +38,7 @@ export function Footer({ latestMonth, generatedAt }: { latestMonth: string; gene
           <div className="foot-social">
             <a className="icon-btn" href={REPO} aria-label="ImmoDash source code on GitHub"><GithubLogo size={18} weight="bold" aria-hidden /></a>
             <a className="icon-btn" href="https://linkedin.com/in/zoeb-ali-khan" aria-label="Zoeb Ali Khan on LinkedIn"><LinkedinLogo size={18} weight="bold" aria-hidden /></a>
-            <a className="icon-btn" href="https://zoeb7184.github.io" aria-label="Zoeb Ali Khan portfolio"><Globe size={18} weight="bold" aria-hidden /></a>
+            <a className="icon-btn" href="https://zoeb-ali.github.io" aria-label="Zoeb Ali Khan portfolio"><Globe size={18} weight="bold" aria-hidden /></a>
           </div>
         </div>
         <nav className="foot-cols" aria-label="Footer">

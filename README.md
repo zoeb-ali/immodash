@@ -245,4 +245,4 @@ Code: [MIT](LICENSE). Data: each source keeps its own licence (see the table abo
 shown on the site and in `sources.json`.
 
 ---
-Built by Zoeb Ali Khan · [github.com/zoeb7184](https://github.com/zoeb7184) · [zoeb7184.github.io](https://zoeb7184.github.io)
+Built by Zoeb Ali Khan · [github.com/zoeb-ali](https://github.com/zoeb-ali) · [zoeb-ali.github.io](https://zoeb-ali.github.io)

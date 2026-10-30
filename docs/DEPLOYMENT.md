@@ -32,7 +32,7 @@ From your terminal (see `docs/PUSH_TO_GITHUB.md`). The repo already contains a c
 ## 2. Vercel
 
 1. Sign in at [vercel.com](https://vercel.com) with GitHub. Choose the **Hobby** plan, which is free.
-2. **Add New → Project → import `zoeb7184/immodash`.**
+2. **Add New → Project → import `zoeb-ali/immodash`.**
 3. **Root Directory:** `web`. Framework: Next.js, detected automatically. Leave the build settings at their defaults.
 4. No environment variables are needed. **Deploy.**
 5. The site is live at `https://immodash.vercel.app`, or a similar name. You can rename it under
