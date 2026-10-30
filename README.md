@@ -134,6 +134,12 @@ time for interactive charts); accessibility, best practices and SEO stay at 100.
 The assumptions (60 m², 2 residents, €300k, 2%) are dbt `vars` in `dbt/dbt_project.yml`. The reasoning
 is in [ADR 0003](docs/adr/0003-affordability-index.md).
 
+## Documentation
+
+Start at [`docs/README.md`](docs/README.md): the [runbook](docs/RUNBOOK.md) (operations and incidents), the
+[data dictionary](docs/DATA_DICTIONARY.md) (every table and column, generated with `make docs`), the
+[architecture decision records](docs/adr/), the [changelog](CHANGELOG.md) and [how to contribute](CONTRIBUTING.md).
+
 ## Quickstart
 
 ```bash
@@ -213,7 +219,7 @@ web/                         Next.js 16 static site (Vercel); web/public/data is
 deploy/railway/              Railway config-as-code for api, dashboard and the daily refresh cron
 scripts/                     run_local.sh (make demo), verify.py + report.py (make verify)
 tests/                       pytest suite (builds a throwaway warehouse per session)
-docs/                        data sources, deployment guide, architecture decision records, screenshots
+docs/                        documentation index, runbook, data dictionary + codebook, data sources, ADRs, screenshots
 ```
 
 ## Known limitations

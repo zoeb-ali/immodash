@@ -1,4 +1,4 @@
-.PHONY: install ingest dbt ml refresh api dashboard test up down demo verify
+.PHONY: install ingest dbt ml refresh api dashboard test up down demo verify docs docs-check
 
 export DBT_PROFILES_DIR := $(CURDIR)/dbt
 
@@ -36,3 +36,9 @@ up:                ## full stack: postgres + pipeline + api + dashboard
 
 down:
 	docker compose down
+
+docs:              ## regenerate docs/DATA_DICTIONARY.md from the warehouse, dbt models and docs/codebook/columns.yml
+	python scripts/gen_data_dictionary.py
+
+docs-check:        ## fail if any gold/ml column has no definition in docs/codebook/columns.yml
+	python scripts/gen_data_dictionary.py --check

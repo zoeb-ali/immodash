@@ -1,0 +1,151 @@
+# ImmoDash codebook: one definition per column name, shared by every table that uses it.
+# scripts/gen_data_dictionary.py combines this with the live warehouse schema and the dbt model files
+# to write docs/DATA_DICTIONARY.md. `make docs-check` fails if a gold/ml column has no entry here.
+#
+# Fields: desc (required), unit (optional), values (optional, for coded columns).
+# Keep definitions short and factual. If a column means different things in two tables, rename it.
+
+tables:
+  ml.rent_forecast: "3, 6 and 12 month asking-rent forecasts per city from LightGBM quantile models, with conformal-calibrated 80% ranges. One row per city, origin month and horizon."
+  ml.forecast_backtest: "Rolling-origin back-test of the forecast model against two baselines (no change, trend continuation). One row per horizon and model."
+  ml.model_card: "Metadata of the last trained forecast model: features, parameters, training window, calibration. One row per training run."
+  ml.rent_anomalies: "Monthly asking-rent moves per city scored against the city's own previous 24 months, after removing the all-city move. One row per city and month."
+
+columns:
+  # --- keys and names ---------------------------------------------------------------------------
+  ags: {desc: "Amtlicher Gemeindeschlüssel, the official 5-digit district (Kreis) key. Join key across all district tables."}
+  kreis_name: {desc: "Official district name as published by BKG / Destatis (e.g. 'Bielefeld, Stadt')."}
+  kreis_short_name: {desc: "District name without the type suffix (e.g. 'Bielefeld')."}
+  kreis_type: {desc: "Administrative type of the district.", values: "Kreisfreie Stadt, Stadtkreis, Kreis, Landkreis"}
+  is_urban_district: {desc: "True for city districts (Kreisfreie Stadt, Stadtkreis), false for rural districts."}
+  land_code: {desc: "2-digit federal state (Land) code, the first two digits of ags."}
+  land_name: {desc: "Federal state name in German (e.g. 'Nordrhein-Westfalen')."}
+  land_short: {desc: "Federal state abbreviation (e.g. 'NW')."}
+  city: {desc: "City name as used by GREIX (German spelling, e.g. 'München')."}
+  city_en: {desc: "City name for display in English (e.g. 'Munich'); equals `city` where the spelling is the same."}
+  mapping_type: {desc: "How a GREIX city maps to a district.", values: "exact (city is its own district), containing_kreis (city lies inside a larger district, e.g. Region Hannover)"}
+  bezirk_code: {desc: "Zensus code of a borough (Bezirk) in Berlin or Hamburg."}
+  bezirk_name: {desc: "Borough (Bezirk) name in Berlin or Hamburg."}
+  plz: {desc: "5-digit postcode (Postleitzahl). Areas from OpenStreetMap (ODbL)."}
+  grid_id: {desc: "Zensus INSPIRE grid cell id (EPSG:3035)."}
+  x: {desc: "Easting of the grid cell centre.", unit: "m, EPSG:3035"}
+  y: {desc: "Northing of the grid cell centre.", unit: "m, EPSG:3035"}
+  resolution_m: {desc: "Grid cell size.", unit: "m", values: "100 (37 city districts), 1000 (everywhere)"}
+
+  # --- time --------------------------------------------------------------------------------------
+  period_date: {desc: "First day of the month (or quarter) the row refers to."}
+  year: {desc: "Calendar year of the row."}
+  quarter: {desc: "Calendar quarter of the row.", values: "1 to 4"}
+  latest_month: {desc: "Most recent month with GREIX asking-rent data for the city."}
+  reference_date: {desc: "Census reference date (Zensus 2022: 15 May 2022)."}
+  accounts_year: {desc: "Year of the latest regional accounts (income, population) available for the district."}
+  income_year: {desc: "Year of the income figure used in the row."}
+  pressure_quarter: {desc: "Quarter of the market-pressure figures in the row."}
+  sales_rent_quarter: {desc: "Quarter of the sales-to-rent index ratio in the row."}
+  origin_month: {desc: "Last month of data the forecast was made from."}
+  target_month: {desc: "Month the forecast refers to (origin_month + horizon_months)."}
+  horizon_months: {desc: "Forecast horizon.", unit: "months", values: "3, 6, 12"}
+  history_from: {desc: "First month of the training data."}
+  history_to: {desc: "Last month of the training data."}
+  trained_at: {desc: "When the model was trained (UTC)."}
+
+  # --- rents -------------------------------------------------------------------------------------
+  rent_eur_sqm: {desc: "Average net cold rent (Nettokaltmiete) on existing contracts, Zensus 2022, for the row's segment or area.", unit: "€/m² per month"}
+  existing_rent_eur_sqm: {desc: "Zensus 2022 rent on existing contracts used as the base for the asking-rent estimate.", unit: "€/m² per month"}
+  existing_contract_rent_sqm_2022: {desc: "Zensus 2022 average rent on existing contracts in the city's district.", unit: "€/m² per month"}
+  city_rent_eur_sqm: {desc: "Zensus 2022 average rent of the whole city, for comparison with its boroughs.", unit: "€/m² per month"}
+  national_mean_rent_eur_sqm: {desc: "Zensus 2022 national average rent for the same segment.", unit: "€/m² per month"}
+  median_rent_sqm: {desc: "Median asking rent of listings in the month (GREIX).", unit: "€/m² per month"}
+  avg_rent_sqm: {desc: "Mean asking rent of listings in the month (GREIX).", unit: "€/m² per month"}
+  p25_rent_sqm: {desc: "25th percentile of asking rents in the month (GREIX).", unit: "€/m² per month"}
+  p75_rent_sqm: {desc: "75th percentile of asking rents in the month (GREIX).", unit: "€/m² per month"}
+  iqr_rent_sqm: {desc: "Spread of asking rents: p75_rent_sqm minus p25_rent_sqm.", unit: "€/m² per month"}
+  nominal_rent_index: {desc: "GREIX hedonic (quality-adjusted) asking-rent index, nominal."}
+  real_rent_index: {desc: "GREIX hedonic asking-rent index adjusted for consumer price inflation."}
+  median_mom_pct: {desc: "Change of median_rent_sqm against the previous month.", unit: "%"}
+  index_yoy_pct: {desc: "Change of nominal_rent_index against 12 months earlier.", unit: "%"}
+  index_5y_pct: {desc: "Change of nominal_rent_index against 60 months earlier.", unit: "%"}
+  estimated_asking_rent_eur_sqm: {desc: "Estimated asking rent for a new lease today: rent_eur_sqm × (1 + asking_premium).", unit: "€/m² per month"}
+  asking_premium: {desc: "Gap between today's asking rents and 2022 census rents, as a fraction (0.65 = 65% higher). Taken from the city, else the state median, else the national median of GREIX cities."}
+  asking_premium_vs_existing_pct: {desc: "How much higher the latest median asking rent is than the 2022 census rent on existing contracts.", unit: "%"}
+  estimate_method: {desc: "Which premium was used for the estimate.", values: "greix_city, greix_land_median, greix_national_median"}
+  rent_index_vs_national: {desc: "District rent relative to the national average for the same segment (100 = national average)."}
+  rent_index_vs_kreis_median: {desc: "Grid cell rent relative to the district median at the same resolution (100 = median)."}
+  rent_index_vs_kreis: {desc: "Postcode median rent relative to its city's median (100 = city median). The finder multiplies the city estimate by this / 100."}
+  rank_most_expensive: {desc: "Rank of the district by rent within the segment (1 = most expensive of 400)."}
+  rank_in_city: {desc: "Rank of the borough by rent within its city (1 = most expensive)."}
+  vs_city_pct: {desc: "Borough rent compared with the city average.", unit: "%"}
+  rooms: {desc: "Flat segment by number of rooms.", values: "total, 1, 2, 3, 4, 5, 6, 7+"}
+  rooms_sort: {desc: "Sort order for `rooms` (total first)."}
+  size_band_code: {desc: "Zensus floor-area band code (e.g. WFL040B059 = 40 to 59 m²)."}
+  size_band_label: {desc: "Readable floor-area band (e.g. '40 to 59 m²')."}
+  sqm_from: {desc: "Lower bound of the floor-area band.", unit: "m²"}
+  sqm_to: {desc: "Upper bound of the floor-area band.", unit: "m²"}
+  low_reliability: {desc: "True where Zensus published the value in brackets (few flats); excluded from medians and ranges."}
+
+  # --- spreads within an area ---------------------------------------------------------------------
+  cells: {desc: "Number of reliable grid cells behind the figures in the row."}
+  p10_rent_eur_sqm: {desc: "10th percentile of grid-cell rents in the area (Zensus 2022).", unit: "€/m² per month"}
+  p25_rent_eur_sqm: {desc: "25th percentile of grid-cell rents in the area (Zensus 2022).", unit: "€/m² per month"}
+  p50_rent_eur_sqm: {desc: "Median of grid-cell rents in the area (Zensus 2022).", unit: "€/m² per month"}
+  p75_rent_eur_sqm: {desc: "75th percentile of grid-cell rents in the area (Zensus 2022).", unit: "€/m² per month"}
+  p90_rent_eur_sqm: {desc: "90th percentile of grid-cell rents in the area (Zensus 2022).", unit: "€/m² per month"}
+  p90_p10_ratio: {desc: "p90_rent_eur_sqm / p10_rent_eur_sqm, how unequal rents are inside the district (1 km cells)."}
+  p10_index: {desc: "Cheaper end of the district relative to its median (100 = median). The finder's low end = estimate × p10_index / 100."}
+  p90_index: {desc: "Dearer end of the district relative to its median (100 = median). The finder's high end = estimate × p90_index / 100."}
+
+  # --- income, population, affordability ---------------------------------------------------------
+  population: {desc: "Residents of the district (regional accounts, VGR der Länder).", unit: "people"}
+  disposable_income_per_resident_eur: {desc: "Disposable household income per resident per year (VGR der Länder).", unit: "€ per year"}
+  income_cagr_5y_pct: {desc: "Average yearly growth of disposable income per resident over 5 years.", unit: "% per year"}
+  income_growth_5y_pct: {desc: "Total growth of disposable income per resident over 5 years.", unit: "%"}
+  assumed_flat_sqm: {desc: "Reference flat size used for burden figures (dbt var reference_flat_sqm).", unit: "m²"}
+  assumed_household_size: {desc: "Reference household size used for burden figures (dbt var reference_household_size).", unit: "people"}
+  reference_monthly_rent_eur: {desc: "Monthly cold rent of the reference flat (rent × assumed_flat_sqm).", unit: "€ per month"}
+  rent_burden_pct: {desc: "Annual cold rent of the reference flat as a share of the reference household's disposable income, both for 2022.", unit: "%"}
+  asking_rent_burden_pct: {desc: "Same as rent_burden_pct but with today's median asking rent and the latest income.", unit: "%"}
+  affordability_index: {desc: "Median district burden ÷ district burden × 100 (100 = median district, higher = more affordable)."}
+  affordability_rank: {desc: "Rank by affordability_index (1 = most affordable of 400)."}
+
+  # --- market balance -----------------------------------------------------------------------------
+  market_active_vacancy_pct: {desc: "Share of flats in multi-family buildings that stood empty and could be rented (Zensus 2022).", unit: "%"}
+  population_growth_5y_pct: {desc: "Population change from 2018 to 2023.", unit: "%"}
+  supply_demand_index: {desc: "z(population_growth_5y_pct) minus z(market_active_vacancy_pct) across all districts. ≥ 1 tight, ≤ −1 slack."}
+  market_balance: {desc: "Class from supply_demand_index.", values: "tight, balanced, slack"}
+  time_on_market_days_4q: {desc: "Days a listing stays online, rolling 4 quarters (GREIX).", unit: "days"}
+  share_closed_within_week_4q: {desc: "Share of listings taken down within a week, rolling 4 quarters (GREIX).", unit: "fraction (0 to 1)"}
+  demand_pressure_score: {desc: "Mean of the cross-city z-scores of (inverted) time on market and share closed within a week, per quarter. Higher = more competition."}
+  sales_to_rent_index_ratio: {desc: "GREIX sales price index ÷ GREIX rent index for the latest quarter with both. A rising ratio means prices outpaced rents."}
+
+  # --- financing ----------------------------------------------------------------------------------
+  rate_pct: {desc: "Effective interest rate on new housing loans to households (Bundesbank SUD131Z).", unit: "% per year"}
+  change_12m_pp: {desc: "Change of rate_pct against 12 months earlier.", unit: "percentage points"}
+  reference_loan_eur: {desc: "Reference loan amount (dbt var).", unit: "€"}
+  reference_amortisation_pct: {desc: "Reference yearly repayment rate (dbt var).", unit: "% per year"}
+  monthly_payment_reference_loan_eur: {desc: "reference_loan_eur × (rate_pct + reference_amortisation_pct) ÷ 12.", unit: "€ per month"}
+
+  # --- forecasts and anomalies --------------------------------------------------------------------
+  median_rent_now: {desc: "Median asking rent at origin_month, the level the forecast starts from.", unit: "€/m² per month"}
+  p10_rent_sqm: {desc: "Lower edge of the forecast's 80% range.", unit: "€/m² per month"}
+  p50_rent_sqm: {desc: "Most likely forecast value (median).", unit: "€/m² per month"}
+  p90_rent_sqm: {desc: "Upper edge of the forecast's 80% range.", unit: "€/m² per month"}
+  change_p50_pct: {desc: "Forecast change from median_rent_now to p50_rent_sqm.", unit: "%"}
+  model: {desc: "Model in the back-test.", values: "lightgbm, naive_no_change, drift_last_12m"}
+  model_version: {desc: "Version tag of the forecast model (e.g. lgbm-quantile-v1)."}
+  mape_pct: {desc: "Mean absolute percentage error, out of sample.", unit: "%"}
+  mae_eur_sqm: {desc: "Mean absolute error, out of sample.", unit: "€/m² per month"}
+  coverage_80_pct: {desc: "Share of real outcomes inside the 80% range (target 80).", unit: "%"}
+  n_origins: {desc: "Number of rolling forecast origins in the back-test."}
+  n_forecasts: {desc: "Number of forecasts scored in the back-test."}
+  cities: {desc: "Number of cities in the training data."}
+  training_rows: {desc: "Number of training rows."}
+  features: {desc: "Feature list used by the model (JSON-like text)."}
+  params: {desc: "LightGBM parameters (JSON-like text)."}
+  conformal_widening_log: {desc: "Width added to the quantile range per horizon by conformal calibration, in log points (text)."}
+  mom_pct: {desc: "City's median asking rent change against the previous month.", unit: "%"}
+  market_mom_pct: {desc: "Median monthly change across all cities in the same month.", unit: "%"}
+  excess_pct: {desc: "mom_pct minus market_mom_pct: the city's move beyond the market.", unit: "percentage points"}
+  robust_z: {desc: "excess_pct scored against the city's previous 24 months with median and MAD (Iglewicz and Hoaglin modified z)."}
+  is_anomaly: {desc: "True when abs(robust_z) ≥ 3.5."}
+  direction: {desc: "Sign of the unusual move.", values: "spike, drop"}
+  severity: {desc: "Size class of abs(robust_z).", values: "normal (< 3.5), notable (3.5 to 5), extreme (> 5)"}
