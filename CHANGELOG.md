@@ -13,6 +13,13 @@ PATCH for fixes. The weekly `data: weekly refresh` commits by the bot change dat
 - Data dictionary generated from the warehouse: `docs/DATA_DICTIONARY.md`, with column definitions in
   `docs/codebook/columns.yml`, the generator `scripts/gen_data_dictionary.py`, and `make docs` / `make docs-check`.
 
+### Changed
+- Page heroes: key figures moved from beside the title to one row across the full width under it.
+- How it works, About and Supply & demand open with a full-screen hero (title, lead, key figures, scroll cue);
+  the page content starts after scrolling.
+- Section intros (for example References) now run across the full width under their headline.
+- Methodology page: dataset count updated to eleven (postcode boundaries added in 1.4.0).
+
 ## [1.4.1] - 2026-10-30
 
 ### Changed

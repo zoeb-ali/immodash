@@ -9,7 +9,7 @@ import { num, pct } from "@/lib/format";
 export const metadata: Metadata = { title: "How it works", description: "The data pipeline, models and checks behind ImmoDash, explained." };
 
 const STEPS = [
-  { n: "1", t: "Collect", d: "Ten open datasets: Zensus 2022, GREIX listings, Bundesbank loan rates, regional incomes, district boundaries.", tech: "Python ingestion, raw files kept as-is (bronze)" },
+  { n: "1", t: "Collect", d: "Eleven open datasets: Zensus 2022, GREIX listings, Bundesbank loan rates, regional incomes, district and postcode boundaries.", tech: "Python ingestion, raw files kept as-is (bronze)" },
   { n: "2", t: "Clean and test", d: "Tables are joined to Germany's 400 districts and checked automatically: no gaps, no impossible values.", tech: "dbt on DuckDB / PostgreSQL, 75 data tests" },
   { n: "3", t: "Model", d: "A forecasting model predicts each city's rent 3, 6 and 12 months ahead, and unusual months are flagged.", tech: "LightGBM quantile regression, conformal intervals, robust z-scores" },
   { n: "4", t: "Serve", d: "Every number on this site comes from one typed interface, so the website and analyst tools never disagree.", tech: "FastAPI, 25 endpoints, Pydantic contracts" },
@@ -41,8 +41,8 @@ export default function Methodology() {
   const better = lg12 && nv12 ? Math.round((1 - lg12.mape_pct / nv12.mape_pct) * 100) : null;
   return (
     <>
-      <PageHero title="How ImmoDash works"
-        lead="Ten public datasets become one tested picture of the German rental market, rebuilt automatically every week."
+      <PageHero full title="How ImmoDash works"
+        lead="Eleven public datasets become one tested picture of the German rental market, rebuilt automatically every week."
         label="The pipeline at a glance"
         facts={<>
           <Stat label="Last automatic run" value={fmtDay(meta.generated_at)} say="Rebuilt every Monday by GitHub Actions." />

@@ -41,7 +41,7 @@ export default function SupplyDemand() {
 
   return (
     <>
-      <PageHero title="Where demand outruns the housing stock"
+      <PageHero full title="Where demand outruns the housing stock"
         lead="Where more people want to live than there are flats, rents come under pressure. We measure both sides in every district."
         facts={<>
           <Stat label="Tight markets" value={counts.tight} unit="districts" say={<>Home to {pct((100 * popTight) / popAll, 0)} of Germany&apos;s population.</>} />

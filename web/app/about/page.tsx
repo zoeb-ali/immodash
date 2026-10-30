@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function About() {
   return (
     <>
-      <PageHero title="Why I built ImmoDash"
+      <PageHero full title="Why I built ImmoDash"
         lead="I grew up in Mumbai, one of the most crowded cities in the world. Moving to Germany taught me that the same question follows people on small incomes everywhere: how much of what I earn will the roof take?"
         label="The numbers behind this story"
         facts={<>

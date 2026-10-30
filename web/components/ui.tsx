@@ -1,5 +1,6 @@
 // Server-safe building blocks for the layout.
 import type { ReactNode } from "react";
+import { ArrowDown } from "@phosphor-icons/react/dist/ssr";
 
 export function Figure({ title, sub, children, source, howto, numbers, controls, id }: {
   title: ReactNode; sub?: ReactNode; children: ReactNode; source?: ReactNode; howto?: ReactNode; numbers?: ReactNode;
@@ -62,17 +63,28 @@ export function Stat({ label, value, unit, say }: { label: string; value: ReactN
   );
 }
 
-/** Inner-page hero: title and lead on the left, the page's key facts on the right (stacked below on small screens). */
-export function PageHero({ title, lead, facts, label = "Key figures" }: { title: ReactNode; lead: ReactNode; facts?: ReactNode; label?: string }) {
+/** Inner-page hero: title and lead, then the page's key facts in one row across the full width.
+ *  `full` makes the hero fill the first screen, so the page content starts only after scrolling. */
+export function PageHero({ title, lead, facts, label = "Key figures", full = false }: {
+  title: ReactNode; lead: ReactNode; facts?: ReactNode; label?: string; full?: boolean;
+}) {
   return (
-    <header className="hero page-hero">
-      <div className={`wrap${facts ? " page-hero-grid" : ""}`}>
-        <div>
+    <>
+    <header className={`hero page-hero${full ? " full" : ""}`}>
+      <div className="wrap page-hero-inner">
+        <div className="page-hero-text">
           <h1 className="enter">{title}</h1>
           <p className="lead enter">{lead}</p>
         </div>
         {facts && <aside className="hero-facts enter" aria-label={label}><ul className="stats one">{facts}</ul></aside>}
+        {full && (
+          <a className="scroll-cue" href="#after-hero" aria-label="Scroll to the content">
+            <span>Scroll</span><ArrowDown size={16} weight="bold" aria-hidden />
+          </a>
+        )}
       </div>
     </header>
+    {full && <span id="after-hero" className="after-hero" aria-hidden />}
+    </>
   );
 }
