@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1] / "web" / "public"
 ags = sys.argv[1] if len(sys.argv) > 1 else "11000"
 g = json.loads((ROOT / "data" / "grid" / f"{ags}.json").read_text())
 r, S = g["resolution_m"], 4  # 4 px per 100 m square, 1 px gap
-pts = [(x, y, v) for x, y, v, low in zip(g["x"], g["y"], g["rent_eur_sqm"], g["low_reliability"]) if not low]
+pts = [(x, y, v) for x, y, v, low in zip(g["x"], g["y"], g["rent_eur_sqm"], g["low_reliability"], strict=True) if not low]
 x0, y1 = min(p[0] for p in pts), max(p[1] for p in pts)
 W = int((max(p[0] for p in pts) - x0) / r + 1) * S
 H = int((y1 - min(p[1] for p in pts)) / r + 1) * S
@@ -26,7 +26,7 @@ def render(c0, c1, a0, a1, name):
     px = im.load()
     for x, y, v in pts:
         t = max(0.0, min(1.0, (v - lo) / (hi - lo)))
-        col = tuple(int(a + (b - a) * t) for a, b in zip(c0, c1)) + (int(a0 + (a1 - a0) * t),)
+        col = tuple(int(a + (b - a) * t) for a, b in zip(c0, c1, strict=True)) + (int(a0 + (a1 - a0) * t),)
         cx, cy = int((x - x0) / r) * S, int((y1 - y) / r) * S
         for i in range(S - 1):
             for j in range(S - 1):
