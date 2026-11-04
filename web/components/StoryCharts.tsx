@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { eur, num, pct } from "@/lib/format";
+import { cityName } from "@/lib/i18n";
+import { useI18n } from "@/lib/useLang";
 import { useWidth } from "@/lib/useWidth";
 import { niceTicks } from "./RentCheck";
 
 type Row = { city: string; city_en: string; slug: string; population: number | null };
 
 function ShowAll({ total, shown, onToggle, all }: { total: number; shown: number; onToggle: () => void; all: boolean }) {
+  const { t } = useI18n();
   if (total <= shown && !all) return null;
   return (
     <button className="chip" style={{ marginTop: 14 }} onClick={onToggle}>
-      {all ? "Show fewer cities" : `Show all ${total} cities`}
+      {all ? t("Show fewer cities", "Weniger Städte zeigen") : t(`Show all ${total} cities`, `Alle ${total} Städte zeigen`)}
     </button>
   );
 }
@@ -24,6 +26,8 @@ export function PremiumChart({ rows, highlight }: {
   const [ref, w] = useWidth<HTMLDivElement>(900);
   const [all, setAll] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
+  const { lang, t, f, to } = useI18n();
+  const { eur, num } = f;
   const sorted = [...rows].sort((a, b) => b.premium - a.premium);
   const big = new Set([...rows].sort((a, b) => (b.population ?? 0) - (a.population ?? 0)).slice(0, 14).map((r) => r.city));
   const shown = all ? sorted : sorted.filter((r) => big.has(r.city) || r.city === highlight);
@@ -37,32 +41,32 @@ export function PremiumChart({ rows, highlight }: {
   return (
     <div ref={ref}>
       <div className="legend" style={{ marginBottom: 8 }}>
-        <span className="key"><span className="sw" style={{ background: "var(--s3)", borderRadius: 6 }} /> Existing tenants, 2022 average</span>
-        <span className="key"><span className="sw" style={{ background: "var(--s2)", borderRadius: 6 }} /> New lease today (median asking rent)</span>
+        <span className="key"><span className="sw" style={{ background: "var(--s3)", borderRadius: 6 }} /> {t("Existing tenants, 2022 average", "Bestandsmieter, Schnitt 2022")}</span>
+        <span className="key"><span className="sw" style={{ background: "var(--s2)", borderRadius: 6 }} /> {t("New lease today (median asking rent)", "Neuvertrag heute (mittlere Angebotsmiete)")}</span>
       </div>
-      <svg className="svgchart" width={w} height={H} role="img" aria-label="Existing contract rent in 2022 versus asking rent today, per city">
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={x(t)} x2={x(t)} y1={top - 6} y2={H - 6} stroke="var(--grid)" />
-            <text x={x(t)} y={top - 12} textAnchor="middle" fontSize={11.5} fill="var(--muted)">{t} €/m²</text>
+      <svg className="svgchart" width={w} height={H} role="img" aria-label={t("Existing contract rent in 2022 versus asking rent today, per city", "Bestandsmiete 2022 und Angebotsmiete heute, je Stadt")}>
+        {ticks.map((tv) => (
+          <g key={tv}>
+            <line x1={x(tv)} x2={x(tv)} y1={top - 6} y2={H - 6} stroke="var(--grid)" />
+            <text x={x(tv)} y={top - 12} textAnchor="middle" fontSize={11.5} fill="var(--muted)">{tv} €/m²</text>
           </g>
         ))}
-        <text x={w - 2} y={top - 12} textAnchor="end" fontSize={11.5} fill="var(--muted)">extra</text>
+        <text x={w - 2} y={top - 12} textAnchor="end" fontSize={11.5} fill="var(--muted)">{t("extra", "Aufschlag")}</text>
         {shown.map((r, i) => {
           const y = top + i * rowH + rowH / 2, hl = r.city === highlight || r.city === hover;
           return (
             <g key={r.city} onMouseEnter={() => setHover(r.city)} onMouseLeave={() => setHover(null)} style={{ cursor: "default" }}>
               <rect x={0} y={y - rowH / 2} width={w} height={rowH} fill={hl ? "var(--surface-2)" : "transparent"} />
-              <Link href={`/cities/${r.slug}`}>
-                <text x={labelW - 10} y={y + 4} textAnchor="end" fontSize={13} fontWeight={hl ? 700 : 500} fill="var(--ink)">{r.city_en}</text>
+              <Link href={to(`/cities/${r.slug}`)}>
+                <text x={labelW - 10} y={y + 4} textAnchor="end" fontSize={13} fontWeight={hl ? 700 : 500} fill="var(--ink)">{cityName(lang, r)}</text>
               </Link>
               <line x1={x(r.existing)} x2={x(r.asking)} y1={y} y2={y} stroke="var(--context)" strokeWidth={3} strokeLinecap="round" />
               <circle cx={x(r.existing)} cy={y} r={6} fill="var(--s3)" stroke="var(--surface)" strokeWidth={2} />
               <circle cx={x(r.asking)} cy={y} r={6} fill="var(--s2)" stroke="var(--surface)" strokeWidth={2} />
               {hl && !narrow && (
-                <text x={x(r.asking) + 10} y={y + 4} fontSize={12} fill="var(--ink-2)">{eur(r.existing)} to {eur(r.asking)}</text>
+                <text x={x(r.asking) + 10} y={y + 4} fontSize={12} fill="var(--ink-2)">{eur(r.existing)} {t("to", "auf")} {eur(r.asking)}</text>
               )}
-              <text x={w - 2} y={y + 4} textAnchor="end" fontSize={13} fontWeight={600} fill="var(--ink)">+{num(r.premium)}%</text>
+              <text x={w - 2} y={y + 4} textAnchor="end" fontSize={13} fontWeight={600} fill="var(--ink)">+{f.pct(r.premium, 0)}</text>
             </g>
           );
         })}
@@ -79,6 +83,8 @@ export function OutlookChart({ rows, highlight }: {
   const [ref, w] = useWidth<HTMLDivElement>(900);
   const [all, setAll] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
+  const { lang, t, f, to } = useI18n();
+  const { num, pct } = f;
   const ch = (v: number, now: number) => (100 * v) / now - 100;
   const data = rows.map((r) => ({ ...r, lo: ch(r.p10, r.now), mid: ch(r.p50, r.now), hi: ch(r.p90, r.now) }))
     .sort((a, b) => b.mid - a.mid);
@@ -94,14 +100,14 @@ export function OutlookChart({ rows, highlight }: {
   return (
     <div ref={ref}>
       <div className="legend" style={{ marginBottom: 8 }}>
-        <span className="key"><span className="sw" style={{ background: "var(--s1)", borderRadius: 6 }} /> Most likely change</span>
-        <span className="key"><span className="sw" style={{ background: "color-mix(in srgb, var(--s1) 30%, transparent)", width: 22 }} /> 80% range</span>
+        <span className="key"><span className="sw" style={{ background: "var(--s1)", borderRadius: 6 }} /> {t("Most likely change", "Wahrscheinlichste Veränderung")}</span>
+        <span className="key"><span className="sw" style={{ background: "color-mix(in srgb, var(--s1) 30%, transparent)", width: 22 }} /> {t("80% range", "80-%-Spanne")}</span>
       </div>
-      <svg className="svgchart" width={w} height={H} role="img" aria-label="Forecast change in asking rent over the next 12 months, per city">
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={x(t)} x2={x(t)} y1={top - 6} y2={H - 6} stroke={t === 0 ? "var(--muted)" : "var(--grid)"} />
-            <text x={x(t)} y={top - 12} textAnchor="middle" fontSize={11.5} fill="var(--muted)">{t > 0 ? "+" : ""}{t}%</text>
+      <svg className="svgchart" width={w} height={H} role="img" aria-label={t("Forecast change in asking rent over the next 12 months, per city", "Prognostizierte Veränderung der Angebotsmiete in 12 Monaten, je Stadt")}>
+        {ticks.map((tv) => (
+          <g key={tv}>
+            <line x1={x(tv)} x2={x(tv)} y1={top - 6} y2={H - 6} stroke={tv === 0 ? "var(--muted)" : "var(--grid)"} />
+            <text x={x(tv)} y={top - 12} textAnchor="middle" fontSize={11.5} fill="var(--muted)">{pct(tv, 0, true)}</text>
           </g>
         ))}
         {shown.map((r, i) => {
@@ -109,8 +115,8 @@ export function OutlookChart({ rows, highlight }: {
           return (
             <g key={r.city} onMouseEnter={() => setHover(r.city)} onMouseLeave={() => setHover(null)}>
               <rect x={0} y={y - rowH / 2} width={w} height={rowH} fill={hl ? "var(--surface-2)" : "transparent"} />
-              <Link href={`/cities/${r.slug}`}>
-                <text x={labelW - 10} y={y + 4} textAnchor="end" fontSize={13} fontWeight={hl ? 700 : 500} fill="var(--ink)">{r.city_en}</text>
+              <Link href={to(`/cities/${r.slug}`)}>
+                <text x={labelW - 10} y={y + 4} textAnchor="end" fontSize={13} fontWeight={hl ? 700 : 500} fill="var(--ink)">{cityName(lang, r)}</text>
               </Link>
               <rect x={x(r.lo)} y={y - 5} width={Math.max(2, x(r.hi) - x(r.lo))} height={10} rx={5}
                 fill="color-mix(in srgb, var(--s1) 30%, transparent)" />

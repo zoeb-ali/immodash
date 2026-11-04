@@ -1,6 +1,7 @@
 // Server-safe building blocks for the layout.
 import type { ReactNode } from "react";
 import { ArrowDown } from "@phosphor-icons/react/dist/ssr";
+import { T } from "./T";
 
 export function Figure({ title, sub, children, source, howto, numbers, controls, id }: {
   title: ReactNode; sub?: ReactNode; children: ReactNode; source?: ReactNode; howto?: ReactNode; numbers?: ReactNode;
@@ -16,16 +17,16 @@ export function Figure({ title, sub, children, source, howto, numbers, controls,
         {controls}
       </div>
       <div className="figure-body">{children}</div>
-      {source && <figcaption className="figure-foot">Source: {source}</figcaption>}
+      {source && <figcaption className="figure-foot"><T en="Source" de="Quelle" />: {source}</figcaption>}
       {howto && (
         <details className="howto">
-          <summary>How to read this chart</summary>
+          <summary><T en="How to read this chart" de="So liest man die Grafik" /></summary>
           <div className="body">{howto}</div>
         </details>
       )}
       {numbers && (
         <details className="numbers">
-          <summary>Show the numbers</summary>
+          <summary><T en="Show the numbers" de="Zahlen anzeigen" /></summary>
           <div className="tablewrap" style={{ maxHeight: 420, overflowY: "auto", marginTop: 8 }}>{numbers}</div>
         </details>
       )}
@@ -33,7 +34,7 @@ export function Figure({ title, sub, children, source, howto, numbers, controls,
   );
 }
 
-export function Takeaway({ children, label = "What this means" }: { children: ReactNode; label?: string }) {
+export function Takeaway({ children, label = <T en="What this means" de="Was das bedeutet" /> }: { children: ReactNode; label?: ReactNode }) {
   return (
     <aside className="takeaway reveal">
       <div className="t-label">{label}</div>
@@ -54,7 +55,7 @@ export function Head({ title, children }: { title: ReactNode; children?: ReactNo
 }
 
 /** A key figure set as a sentence row: the number at reading scale, then a bold lead-in and the explanation. */
-export function Stat({ label, value, unit, say }: { label: string; value: ReactNode; unit?: string; say?: ReactNode }) {
+export function Stat({ label, value, unit, say }: { label: ReactNode; value: ReactNode; unit?: string; say?: ReactNode }) {
   return (
     <li className="stat">
       <span className="value">{value}{unit && <span className="unit">{unit}</span>}</span>
@@ -65,8 +66,8 @@ export function Stat({ label, value, unit, say }: { label: string; value: ReactN
 
 /** Inner-page hero: title and lead, then the page's key facts in one row across the full width.
  *  `full` makes the hero fill the first screen, so the page content starts only after scrolling. */
-export function PageHero({ title, lead, facts, label = "Key figures", full = false }: {
-  title: ReactNode; lead: ReactNode; facts?: ReactNode; label?: string; full?: boolean;
+export function PageHero({ title, lead, facts, label, full = false, de = false }: {
+  title: ReactNode; lead: ReactNode; facts?: ReactNode; label?: string; full?: boolean; de?: boolean;
 }) {
   return (
     <>
@@ -76,10 +77,10 @@ export function PageHero({ title, lead, facts, label = "Key figures", full = fal
           <h1 className="enter">{title}</h1>
           <p className="lead enter">{lead}</p>
         </div>
-        {facts && <aside className="hero-facts enter" aria-label={label}><ul className="stats one">{facts}</ul></aside>}
+        {facts && <aside className="hero-facts enter" aria-label={label ?? (de ? "Kennzahlen" : "Key figures")}><ul className="stats one">{facts}</ul></aside>}
         {full && (
-          <a className="scroll-cue" href="#after-hero" aria-label="Scroll to the content">
-            <span>Scroll</span><ArrowDown size={16} weight="bold" aria-hidden />
+          <a className="scroll-cue" href="#after-hero" aria-label={de ? "Zum Inhalt scrollen" : "Scroll to the content"}>
+            <span>{de ? "Weiter" : "Scroll"}</span><ArrowDown size={16} weight="bold" aria-hidden />
           </a>
         )}
       </div>

@@ -73,12 +73,12 @@ p, li { text-wrap: pretty; }
 /* top bar */
 .topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 86%, transparent);
   backdrop-filter: saturate(1.4) blur(12px); border-bottom: 1px solid var(--line); }
-.topbar-inner { max-width: var(--wide); margin: 0 auto; padding: 12px max(var(--gutter), env(safe-area-inset-right)) 12px max(var(--gutter), env(safe-area-inset-left)); display: flex; gap: 20px; align-items: center; min-height: 64px; }
+.topbar-inner { max-width: var(--wide); margin: 0 auto; padding: 12px max(var(--gutter), env(safe-area-inset-right)) 12px max(var(--gutter), env(safe-area-inset-left)); display: flex; gap: 12px; align-items: center; min-height: 64px; }
 .brand { text-decoration: none; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
 .brand-mark { width: 26px; height: 26px; border-radius: 8px; background: var(--ink); display: grid; place-items: center; }
 .brand-mark span { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); }
 .brand b { font: 650 18px/1 var(--sans); letter-spacing: -0.02em; }
-/* nav: menu button + drawer on small screens, inline links from 921px */
+/* nav: menu button + drawer on small screens, inline links from 1081px (room for the language switch and the longer German labels) */
 .nav { display: none; position: absolute; left: 0; right: 0; top: 100%; background: var(--bg); border-bottom: 1px solid var(--line);
   flex-direction: column; align-items: stretch; padding: 8px var(--gutter) 16px; gap: 2px; }
 .nav[data-open="true"] { display: flex; }
@@ -91,7 +91,14 @@ p, li { text-wrap: pretty; }
 .icon-btn:hover { color: var(--ink); }
 .icon-btn:active { transform: scale(0.96); }
 .menu-btn { display: inline-grid; margin-left: auto; }
-@media (min-width: 921px) {
+/* language switch: EN | DE, same pill language as the segmented controls */
+.lang-toggle { display: inline-flex; flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-pill); padding: 2px; gap: 2px; }
+.lang-toggle a { display: inline-grid; place-items: center; min-width: 34px; height: 30px; padding: 0 8px; border-radius: var(--r-pill);
+  font: 600 12px/1 var(--mono); letter-spacing: 0.06em; color: var(--muted); text-decoration: none; transition: background 0.2s var(--ease), color 0.2s; }
+.lang-toggle a:hover { color: var(--ink); }
+.lang-toggle a[aria-current="true"] { background: var(--ink); color: var(--bg); }
+.lang-toggle a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (min-width: 1081px) {
   .menu-btn { display: none; }
   .nav, .nav[data-open="true"] { display: flex; position: static; flex-direction: row; align-items: center; margin-left: auto; padding: 0; border: 0; background: none; }
   .nav a { padding: 7px clamp(10px, 0.9vw, 16px); font-size: clamp(14px, 0.35vw + 10px, 16px); }
@@ -449,6 +456,7 @@ pre { font: 12px/1.5 var(--mono); background: var(--surface-2); padding: 14px; b
 @media (pointer: coarse) {
   .chip, .seg button, .icon-btn, .textlink, .btn.small { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }
+  .lang-toggle a { height: 38px; min-width: 40px; }
   .howto summary, .numbers summary { min-height: 44px; }
   input[type="range"] { min-height: 44px; }
   select, input[type="search"], input[type="text"], input[type="number"] { min-height: 44px; }
@@ -459,3 +467,12 @@ pre { font: 12px/1.5 var(--mono); background: var(--surface-2); padding: 14px; b
   .crumbs a { display: inline-block; padding-block: 12px; }
 }
 @media print { .topbar, .howto, .numbers, .controls { display: none; } }
+/* very narrow phones: keep brand, menu, language and theme on one line */
+@media (max-width: 380px) {
+  .topbar-inner { gap: 6px; }
+  .lang-toggle a { min-width: 28px; padding: 0 5px; }
+  .brand { gap: 7px; }
+}
+.field select { max-width: 100%; min-width: 0; }
+/* German has long compound words: let headings hyphenate instead of overflowing on phones */
+:lang(de) h1, :lang(de) h2, :lang(de) h3 { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }

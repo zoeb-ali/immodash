@@ -10,6 +10,7 @@ import { loadJson } from "@/lib/api";
 import { laeaToLonLat } from "@/lib/laea";
 import { useTokens } from "@/lib/theme";
 import type { Grid } from "@/lib/types";
+import { useI18n } from "@/lib/useLang";
 
 const RAMP = ["--q1", "--q2", "--q3", "--q4", "--q5"];
 const TOKENS = [...RAMP, "--surface", "--surface-2", "--ink", "--ink-2", "--bg"];
@@ -30,7 +31,8 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<{ x: number; y: number; v: number } | null>(null);
   const [plain, setPlain] = useState(false);
-  const t = useTokens(TOKENS);
+  const tk = useTokens(TOKENS);
+  const { t, f } = useI18n();
 
   useEffect(() => {
     setGrid(null);
@@ -65,12 +67,12 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
 
   // create the map once the grid is ready; rebuild the overlay when the theme changes
   useEffect(() => {
-    if (!geo || !box.current || !t["--q1"]) return;
+    if (!geo || !box.current || !tk["--q1"]) return;
     let cancelled = false;
     let map = mapRef.current;
     const steps = [0, 0.25, 0.5, 0.75, 1].map((p) => geo.lo + p * (geo.hi - geo.lo));
-    const fillColor = ["interpolate", ["linear"], ["get", "v"], ...steps.flatMap((s, i) => [s, t[RAMP[i]]])];
-    const plainStyle: StyleSpecification = { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": t["--surface"] } }] };
+    const fillColor = ["interpolate", ["linear"], ["get", "v"], ...steps.flatMap((s, i) => [s, tk[RAMP[i]]])];
+    const plainStyle: StyleSpecification = { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": tk["--surface"] } }] };
 
     const addOverlay = (m: MLMap) => {
       if (m.getSource("cells")) return;
@@ -80,7 +82,7 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
         paint: { "fill-color": fillColor as never, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.82, 15, 0.6] } }, firstLabel);
       if (geo.outline) {
         m.addSource("outline", { type: "geojson", data: geo.outline });
-        m.addLayer({ id: "outline", type: "line", source: "outline", paint: { "line-color": t["--ink-2"], "line-width": 1.2, "line-opacity": 0.7 } }, firstLabel);
+        m.addLayer({ id: "outline", type: "line", source: "outline", paint: { "line-color": tk["--ink-2"], "line-width": 1.2, "line-opacity": 0.7 } }, firstLabel);
       }
     };
 
@@ -116,28 +118,28 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [geo, t, plain]);
+  }, [geo, tk, plain]);
 
   useEffect(() => () => { mapRef.current?.remove(); mapRef.current = null; }, []);
 
-  if (error) return <p className="note">Neighbourhood grid unavailable ({error}).</p>;
+  if (error) return <p className="note">{t("Neighbourhood grid unavailable", "Mietgitter nicht verfügbar")} ({error}).</p>;
   return (
     <div>
-      <div className="rentmap" role="region" aria-label={`Street map of ${city} with rent per 100 metre square`}>
+      <div className="rentmap" role="region" aria-label={t(`Street map of ${city} with rent per 100 metre square`, `Stadtplan von ${city} mit Miete je 100-Meter-Quadrat`)}>
         <div ref={box} className="rentmap-canvas" />
-        {!geo && <div className="rentmap-loading">Loading 100 m grid…</div>}
+        {!geo && <div className="rentmap-loading">{t("Loading 100 m grid…", "100-m-Gitter wird geladen…")}</div>}
         {hover && geo && (
           <div className="tooltip" style={{ position: "absolute", left: Math.min(hover.x + 14, (box.current?.clientWidth ?? 400) - 220), top: hover.y + 14, pointerEvents: "none", zIndex: 3 }}>
-            <b>{hover.v.toFixed(2)} € per m²</b><br />{((100 * hover.v) / geo.med - 100).toFixed(0)}% vs. the {city} median
+            <b>{f.num(hover.v, 2)} € {t("per m²", "pro m²")}</b><br />{f.pct((100 * hover.v) / geo.med - 100, 0, true)} {t(`vs. the ${city} median`, `ggü. dem Median von ${city}`)}
           </div>
         )}
       </div>
       {geo && (
         <div className="legend" style={{ marginTop: 10, flexWrap: "wrap" }}>
-          <span>{geo.lo.toFixed(1)} €</span>
-          <span className="bar" style={{ background: `linear-gradient(90deg, ${RAMP.map((k) => t[k]).join(",")})` }} />
-          <span>{geo.hi.toFixed(1)} € per m²</span>
-          <span className="muted">· {geo.n.toLocaleString("en-GB")} squares · median {geo.med.toFixed(2)} € · hold Ctrl or Cmd and scroll, or pinch, to zoom</span>
+          <span>{f.num(geo.lo, 1)} €</span>
+          <span className="bar" style={{ background: `linear-gradient(90deg, ${RAMP.map((k) => tk[k]).join(",")})` }} />
+          <span>{f.num(geo.hi, 1)} € {t("per m²", "pro m²")}</span>
+          <span className="muted">· {f.num(geo.n)} {t("squares", "Quadrate")} · Median {f.num(geo.med, 2)} € · {t("hold Ctrl or Cmd and scroll, or pinch, to zoom", "zum Zoomen Strg oder Cmd halten und scrollen, oder mit zwei Fingern ziehen")}</span>
         </div>
       )}
     </div>

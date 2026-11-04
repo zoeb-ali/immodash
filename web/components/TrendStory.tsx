@@ -4,28 +4,31 @@ import { X } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { assignSlots, MAX_SERIES, SERIES } from "@/lib/colors";
-import { month, num } from "@/lib/format";
+import { cityName } from "@/lib/i18n";
+import { useI18n } from "@/lib/useLang";
 import { niceTicks } from "./RentCheck";
 
 export type CompactPoint = { c: string; d: string; m: number };
 type CityLite = { city: string; city_en: string; population: number | null; index_5y_pct: number | null; median: number };
 type Mode = "eur" | "idx";
 
-const PRESETS: { key: string; label: string; pick: (cs: CityLite[]) => string[] }[] = [
-  { key: "big", label: "Biggest cities", pick: (cs) => [...cs].sort((a, b) => (b.population ?? 0) - (a.population ?? 0)).slice(0, 5).map((c) => c.city) },
-  { key: "fast", label: "Fastest risers", pick: (cs) => [...cs].sort((a, b) => (b.index_5y_pct ?? 0) - (a.index_5y_pct ?? 0)).slice(0, 4).map((c) => c.city) },
-  { key: "dear", label: "Most expensive", pick: (cs) => [...cs].sort((a, b) => b.median - a.median).slice(0, 4).map((c) => c.city) },
-  { key: "cheap", label: "Cheapest", pick: (cs) => [...cs].sort((a, b) => a.median - b.median).slice(0, 4).map((c) => c.city) },
+const PRESETS: { key: string; label: [string, string]; pick: (cs: CityLite[]) => string[] }[] = [
+  { key: "big", label: ["Biggest cities", "Größte Städte"], pick: (cs) => [...cs].sort((a, b) => (b.population ?? 0) - (a.population ?? 0)).slice(0, 5).map((c) => c.city) },
+  { key: "fast", label: ["Fastest risers", "Stärkste Anstiege"], pick: (cs) => [...cs].sort((a, b) => (b.index_5y_pct ?? 0) - (a.index_5y_pct ?? 0)).slice(0, 4).map((c) => c.city) },
+  { key: "dear", label: ["Most expensive", "Am teuersten"], pick: (cs) => [...cs].sort((a, b) => b.median - a.median).slice(0, 4).map((c) => c.city) },
+  { key: "cheap", label: ["Cheapest", "Am günstigsten"], pick: (cs) => [...cs].sort((a, b) => a.median - b.median).slice(0, 4).map((c) => c.city) },
 ];
 
 export function TrendStory({ monthly, cities, rateBand, initial }: {
   monthly: CompactPoint[]; cities: CityLite[]; initial: string[];
   rateBand: { from: string; to: string; label: string } | null;
 }) {
+  const { lang, t, f } = useI18n();
+  const { month, num } = f;
   const [mode, setMode] = useState<Mode>("idx");
   const [selected, setSelected] = useState<string[]>(initial);
   const [slots, setSlots] = useState<Record<string, number>>(() => assignSlots(initial, {}));
-  const names = useMemo(() => Object.fromEntries(cities.map((c) => [c.city, c.city_en])), [cities]);
+  const names = useMemo(() => Object.fromEntries(cities.map((c) => [c.city, cityName(lang, c)])), [cities, lang]);
 
   function setSel(next: string[]) {
     next = next.slice(-MAX_SERIES);
@@ -47,7 +50,7 @@ export function TrendStory({ monthly, cities, rateBand, initial }: {
   }, [monthly, mode]);
   const last = rows[rows.length - 1];
   const firstMonth = rows[0]?.date as string;
-  const unit = mode === "eur" ? " €" : "%";
+  const unit = mode === "eur" ? " €" : lang === "de" ? " %" : "%";
 
   // Fixed y-domain so end-label positions can be computed here (deterministic), then spread to avoid overlap.
   const H = 420, TOP = 22, BOTTOM = H - 4 - 30;
@@ -69,27 +72,27 @@ export function TrendStory({ monthly, cities, rateBand, initial }: {
   return (
     <div>
       <div className="controls" style={{ marginBottom: 12, justifyContent: "space-between" }}>
-        <div className="seg" role="group" aria-label="Show as">
-          <button aria-pressed={mode === "idx"} onClick={() => setMode("idx")}>Change since {month(firstMonth)}</button>
-          <button aria-pressed={mode === "eur"} onClick={() => setMode("eur")}>€ per m²</button>
+        <div className="seg" role="group" aria-label={t("Show as", "Anzeigen als")}>
+          <button aria-pressed={mode === "idx"} onClick={() => setMode("idx")}>{t("Change since", "Veränderung seit")} {month(firstMonth)}</button>
+          <button aria-pressed={mode === "eur"} onClick={() => setMode("eur")}>{t("€ per m²", "€ pro m²")}</button>
         </div>
-        <div className="chips" role="group" aria-label="Quick picks">
+        <div className="chips" role="group" aria-label={t("Quick picks", "Schnellauswahl")}>
           {PRESETS.map((p) => (
-            <button key={p.key} className="chip" onClick={() => setSel(p.pick(cities))}>{p.label}</button>
+            <button key={p.key} className="chip" onClick={() => setSel(p.pick(cities))}>{p.label[lang === "de" ? 1 : 0]}</button>
           ))}
         </div>
       </div>
-      <div className="chips" style={{ marginBottom: 10 }} role="group" aria-label="Highlighted cities">
+      <div className="chips" style={{ marginBottom: 10 }} role="group" aria-label={t("Highlighted cities", "Hervorgehobene Städte")}>
         {selected.map((c) => (
-          <button key={c} className="chip" aria-pressed onClick={() => toggle(c)} aria-label={`Remove ${names[c]}`}>
+          <button key={c} className="chip" aria-pressed onClick={() => toggle(c)} aria-label={t(`Remove ${names[c]}`, `${names[c]} entfernen`)}>
             <span className="dot" style={{ background: SERIES[slots[c]] }} />{names[c]}<X size={12} weight="bold" aria-hidden style={{ color: "var(--muted)" }} />
           </button>
         ))}
         {selected.length < MAX_SERIES && (
-          <select aria-label="Add a city" value="" onChange={(e) => e.target.value && toggle(e.target.value)} style={{ minHeight: 32, padding: "4px 10px", borderRadius: 999, fontSize: 13 }}>
-            <option value="">+ Add a city</option>
-            {[...cities].filter((c) => !selected.includes(c.city)).sort((a, b) => a.city_en.localeCompare(b.city_en))
-              .map((c) => <option key={c.city} value={c.city}>{c.city_en}</option>)}
+          <select aria-label={t("Add a city", "Stadt hinzufügen")} value="" onChange={(e) => e.target.value && toggle(e.target.value)} style={{ minHeight: 32, padding: "4px 10px", borderRadius: 999, fontSize: 13 }}>
+            <option value="">{t("+ Add a city", "+ Stadt hinzufügen")}</option>
+            {[...cities].filter((c) => !selected.includes(c.city)).sort((a, b) => names[a.city].localeCompare(names[b.city], lang))
+              .map((c) => <option key={c.city} value={c.city}>{names[c.city]}</option>)}
           </select>
         )}
       </div>
@@ -103,7 +106,7 @@ export function TrendStory({ monthly, cities, rateBand, initial }: {
             )}
             {mode === "idx" && <ReferenceLine y={0} stroke="var(--muted)" />}
             <XAxis dataKey="date" tickFormatter={(d) => String(d).slice(0, 4)} stroke="var(--muted)" tick={{ fontSize: 12 }} interval={11} tickLine={false} />
-            <YAxis stroke="var(--muted)" tick={{ fontSize: 12 }} domain={[lo, hi]} ticks={ticks} tickFormatter={(v) => `${mode === "idx" && v > 0 ? "+" : ""}${v}${unit}`} width={56} axisLine={false} tickLine={false} />
+            <YAxis stroke="var(--muted)" tick={{ fontSize: 12 }} domain={[lo, hi]} ticks={ticks} tickFormatter={(v) => `${mode === "idx" && v > 0 ? "+" : ""}${num(v)}${unit}`} width={56} axisLine={false} tickLine={false} />
             <Tooltip content={({ active, payload, label }) => {
               if (!active || !payload?.length) return null;
               const items = payload.filter((p) => selected.includes(String(p.dataKey))).sort((a, b) => Number(b.value) - Number(a.value));
@@ -115,7 +118,7 @@ export function TrendStory({ monthly, cities, rateBand, initial }: {
                       <span style={{ width: 8, height: 8, borderRadius: 4, background: SERIES[slots[String(p.dataKey)]] }} />
                       {names[String(p.dataKey)]}
                       <b style={{ marginLeft: "auto", paddingLeft: 10 }}>
-                        {mode === "eur" ? `${num(Number(p.value), 2)} €/m²` : `${Number(p.value) > 0 ? "+" : ""}${num(Number(p.value), 0)}%`}
+                        {mode === "eur" ? `${num(Number(p.value), 2)} €/m²` : `${Number(p.value) > 0 ? "+" : ""}${num(Number(p.value), 0)}${unit}`}
                       </b>
                     </div>
                   ))}
@@ -133,7 +136,7 @@ export function TrendStory({ monthly, cities, rateBand, initial }: {
                   const v = Number(last[c]);
                   return (
                     <text key={`${c}-l`} x={Number(p.x) + 6} y={y} fontSize={12} fontWeight={600} fill="var(--ink)">
-                      {names[c]} {mode === "eur" ? `${num(v, 2)} €` : `${v > 0 ? "+" : ""}${num(v, 0)}%`}
+                      {names[c]} {mode === "eur" ? `${num(v, 2)} €` : `${v > 0 ? "+" : ""}${num(v, 0)}${unit}`}
                     </text>
                   );
                 }} />
@@ -143,8 +146,8 @@ export function TrendStory({ monthly, cities, rateBand, initial }: {
       </div>
       <div className="legend" style={{ marginTop: 6 }}>
         {selected.map((c) => <span key={c} className="key"><span className="ln" style={{ background: SERIES[slots[c]], height: 3 }} />{names[c]}</span>)}
-        <span className="key"><span className="ln" style={{ background: "var(--context)" }} />The other cities</span>
-        {rateBand && <span className="key"><span className="sw" style={{ background: "color-mix(in srgb, var(--s4) 25%, transparent)" }} />Interest-rate jump</span>}
+        <span className="key"><span className="ln" style={{ background: "var(--context)" }} />{t("The other cities", "Die übrigen Städte")}</span>
+        {rateBand && <span className="key"><span className="sw" style={{ background: "color-mix(in srgb, var(--s4) 25%, transparent)" }} />{t("Interest-rate jump", "Zinssprung")}</span>}
       </div>
     </div>
   );

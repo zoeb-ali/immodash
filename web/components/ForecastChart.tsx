@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { month, num } from "@/lib/format";
+import { useI18n } from "@/lib/useLang";
 import type { Anomaly, Forecast } from "@/lib/types";
 
 export type HistPoint = { c: string; d: string; m: number };
@@ -13,6 +13,8 @@ export function ForecastChart({ city, cityEn, history, forecasts, anomalies, oth
   city: string; cityEn: string; history: HistPoint[]; forecasts: Forecast[]; anomalies: Anomaly[];
   others: { city: string; city_en: string }[];
 }) {
+  const { t, f } = useI18n();
+  const { month, num } = f;
   const [cmp, setCmp] = useState<string>("");
   const [range, setRange] = useState<"4y" | "all">("4y");
   const cmpName = others.find((o) => o.city === cmp)?.city_en;
@@ -53,13 +55,13 @@ export function ForecastChart({ city, cityEn, history, forecasts, anomalies, oth
   return (
     <div>
       <div className="controls" style={{ marginBottom: 12 }}>
-        <div className="seg" role="group" aria-label="Time range">
-          <button aria-pressed={range === "4y"} onClick={() => setRange("4y")}>Last 4 years</button>
-          <button aria-pressed={range === "all"} onClick={() => setRange("all")}>Since 2020</button>
+        <div className="seg" role="group" aria-label={t("Time range", "Zeitraum")}>
+          <button aria-pressed={range === "4y"} onClick={() => setRange("4y")}>{t("Last 4 years", "Letzte 4 Jahre")}</button>
+          <button aria-pressed={range === "all"} onClick={() => setRange("all")}>{t("Since 2020", "Seit 2020")}</button>
         </div>
         <div className="field">
-          <select aria-label="Compare with another city" value={cmp} onChange={(e) => setCmp(e.target.value)}>
-            <option value="">Compare with…</option>
+          <select aria-label={t("Compare with another city", "Mit einer anderen Stadt vergleichen")} value={cmp} onChange={(e) => setCmp(e.target.value)}>
+            <option value="">{t("Compare with…", "Vergleichen mit…")}</option>
             {others.map((o) => <option key={o.city} value={o.city}>{o.city_en}</option>)}
           </select>
         </div>
@@ -70,7 +72,7 @@ export function ForecastChart({ city, cityEn, history, forecasts, anomalies, oth
             <CartesianGrid stroke="var(--grid)" vertical={false} />
             <XAxis dataKey="date" type="number" scale="time" domain={["dataMin", "dataMax"]} ticks={ticks} tickFormatter={(d) => month(new Date(d).toISOString())}
               stroke="var(--muted)" tick={{ fontSize: 12 }} minTickGap={24} tickLine={false} />
-            <YAxis stroke="var(--muted)" tick={{ fontSize: 12 }} domain={["auto", "auto"]} tickFormatter={(v) => `${v} €`} width={52} axisLine={false} tickLine={false} />
+            <YAxis stroke="var(--muted)" tick={{ fontSize: 12 }} domain={["auto", "auto"]} tickFormatter={(v) => `${num(v)} €`} width={52} axisLine={false} tickLine={false} />
             <Tooltip content={({ active, payload, label }) => {
               if (!active || !payload?.length) return null;
               const r = payload[0].payload as Row;
@@ -79,10 +81,10 @@ export function ForecastChart({ city, cityEn, history, forecasts, anomalies, oth
                   <div className="tt-k">{month(new Date(Number(label)).toISOString())}</div>
                   {r.hist != null && <div>{cityEn}: <b>{num(r.hist, 2)} €/m²</b></div>}
                   {r.hist == null && r.p50 != null && (
-                    <div>{cityEn} forecast: <b>{num(r.p50, 2)} €/m²</b><br /><span className="tt-k">likely {num(r.band![0], 2)} to {num(r.band![1], 2)} €</span></div>
+                    <div>{cityEn} {t("forecast", "Prognose")}: <b>{num(r.p50, 2)} €/m²</b><br /><span className="tt-k">{t("likely", "wahrscheinlich")} {num(r.band![0], 2)} {t("to", "bis")} {num(r.band![1], 2)} €</span></div>
                   )}
                   {r.cmp != null && <div>{cmpName}: <b>{num(r.cmp, 2)} €/m²</b></div>}
-                  {r.cmp == null && r.cmpF != null && <div>{cmpName} forecast: <b>{num(r.cmpF, 2)} €/m²</b></div>}
+                  {r.cmp == null && r.cmpF != null && <div>{cmpName} {t("forecast", "Prognose")}: <b>{num(r.cmpF, 2)} €/m²</b></div>}
                 </div>
               );
             }} />
@@ -101,10 +103,10 @@ export function ForecastChart({ city, cityEn, history, forecasts, anomalies, oth
       </div>
       <div className="legend" style={{ marginTop: 6 }}>
         <span className="key"><span className="ln" style={{ background: "var(--s1)", height: 3 }} />{cityEn}</span>
-        <span className="key"><span className="ln" style={{ borderTop: "2px dashed var(--s1)", background: "none" }} />Forecast</span>
-        <span className="key"><span className="sw" style={{ background: "color-mix(in srgb, var(--s1) 22%, transparent)" }} />80% range</span>
+        <span className="key"><span className="ln" style={{ borderTop: "2px dashed var(--s1)", background: "none" }} />{t("Forecast", "Prognose")}</span>
+        <span className="key"><span className="sw" style={{ background: "color-mix(in srgb, var(--s1) 22%, transparent)" }} />{t("80% range", "80-%-Spanne")}</span>
         {cmp && <span className="key"><span className="ln" style={{ background: "var(--s2)", height: 3 }} />{cmpName}</span>}
-        {shown.length > 0 && <span className="key"><span className="sw" style={{ border: "1.5px dashed var(--ink)", borderRadius: 7, background: "none" }} />Unusual month</span>}
+        {shown.length > 0 && <span className="key"><span className="sw" style={{ border: "1.5px dashed var(--ink)", borderRadius: 7, background: "none" }} />{t("Unusual month", "Auffälliger Monat")}</span>}
       </div>
     </div>
   );

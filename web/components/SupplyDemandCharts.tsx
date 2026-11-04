@@ -2,16 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { CartesianGrid, ReferenceArea, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
-import { num, pct } from "@/lib/format";
+import { balance } from "@/lib/i18n";
+import { useI18n } from "@/lib/useLang";
 import type { KreisSupplyDemand } from "@/lib/types";
 
 const GROUPS = [
-  { key: "tight", label: "Tight", fill: "var(--d-neg2)" },
-  { key: "balanced", label: "Balanced", fill: "var(--context)" },
-  { key: "slack", label: "Slack", fill: "var(--d-pos2)" },
+  { key: "tight", label: ["Tight", "Angespannt"], fill: "var(--d-neg2)" },
+  { key: "balanced", label: ["Balanced", "Ausgeglichen"], fill: "var(--context)" },
+  { key: "slack", label: ["Slack", "Entspannt"], fill: "var(--d-pos2)" },
 ] as const;
 
 export function SupplyDemandScatter({ data, highlight }: { data: KreisSupplyDemand[]; highlight: Record<string, string> }) {
+  const { lang, t, f } = useI18n();
+  const { num, pct } = f;
+  const li = lang === "de" ? 1 : 0;
   const [q, setQ] = useState("");
   const names = useMemo(() => [...data].sort((a, b) => a.kreis_name.localeCompare(b.kreis_name)), [data]);
   const needle = q.trim().toLowerCase();
@@ -31,24 +35,27 @@ export function SupplyDemandScatter({ data, highlight }: { data: KreisSupplyDema
     <div>
       <div className="controls" style={{ marginBottom: 10, justifyContent: "space-between" }}>
         <div className="legend">
-          {GROUPS.map((g) => <span key={g.key} className="key"><span className="sw" style={{ background: g.fill, borderRadius: 6 }} />{g.label}</span>)}
-          {found ? <span className="key"><span className="sw" style={{ background: "var(--accent)", borderRadius: 6 }} />Your search</span>
-            : <span className="key"><span className="sw" style={{ border: "2px solid var(--ink)", borderRadius: 6, background: "none" }} />Labelled cities</span>}
+          {GROUPS.map((g) => <span key={g.key} className="key"><span className="sw" style={{ background: g.fill, borderRadius: 6 }} />{g.label[li]}</span>)}
+          {found ? <span className="key"><span className="sw" style={{ background: "var(--accent)", borderRadius: 6 }} />{t("Your search", "Ihre Suche")}</span>
+            : <span className="key"><span className="sw" style={{ border: "2px solid var(--ink)", borderRadius: 6, background: "none" }} />{t("Labelled cities", "Beschriftete Städte")}</span>}
         </div>
         <div className="field" style={{ minWidth: 220 }}>
-          <input type="search" list="sd-names" placeholder="Find a district" aria-label="Find a district on the chart" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="search" list="sd-names" placeholder={t("Find a district", "Kreis suchen")} aria-label={t("Find a district on the chart", "Kreis in der Grafik suchen")} value={q} onChange={(e) => setQ(e.target.value)} />
           <datalist id="sd-names">{names.map((n) => <option key={n.ags} value={n.kreis_name} />)}</datalist>
         </div>
       </div>
       {found ? (
         <p className="note" style={{ marginBottom: 8, fontSize: 14 }}>
-          <b style={{ color: "var(--ink)" }}>{found.kreis_name}</b> is the highlighted dot: {pct(found.market_active_vacancy_pct)} of flats empty and available,
-          population {pct(found.population_growth_5y_pct, 1, true)} in five years, so the market is <b style={{ color: "var(--ink)" }}>{found.market_balance}</b>
-          {" "}(index {num(found.supply_demand_index, 2)}). The guide lines show where it sits on each axis.
+          {t(<><b style={{ color: "var(--ink)" }}>{found.kreis_name}</b> is the highlighted dot: {pct(found.market_active_vacancy_pct)} of flats empty and available,
+          population {pct(found.population_growth_5y_pct, 1, true)} in five years, so the market is <b style={{ color: "var(--ink)" }}>{balance(lang, found.market_balance)}</b>
+          {" "}(index {num(found.supply_demand_index, 2)}). The guide lines show where it sits on each axis.</>,
+          <><b style={{ color: "var(--ink)" }}>{found.kreis_name}</b> ist der hervorgehobene Punkt: {pct(found.market_active_vacancy_pct)} der Wohnungen leer und verfügbar,
+          Bevölkerung {pct(found.population_growth_5y_pct, 1, true)} in fünf Jahren, der Markt ist also <b style={{ color: "var(--ink)" }}>{balance(lang, found.market_balance)}</b>
+          {" "}(Index {num(found.supply_demand_index, 2)}). Die Hilfslinien zeigen seine Lage auf beiden Achsen.</>)}
         </p>
       ) : (
         <p className="note" style={{ marginBottom: 8, fontSize: 14 }}>
-          The chart always shows all 400 districts. Search for one to highlight it and see where it sits.
+          {t("The chart always shows all 400 districts. Search for one to highlight it and see where it sits.", "Die Grafik zeigt immer alle 400 Kreise. Suchen Sie einen, um ihn hervorzuheben und seine Lage zu sehen.")}
         </p>
       )}
       <div style={{ height: 520 }}>
@@ -56,14 +63,14 @@ export function SupplyDemandScatter({ data, highlight }: { data: KreisSupplyDema
           <ScatterChart margin={{ top: 16, right: 16, bottom: 30, left: 8 }}>
             <CartesianGrid stroke="var(--grid)" />
             <ReferenceArea x1={0.6} x2={mv} y1={mp} y2={ymax} fill="var(--d-neg2)" fillOpacity={0.05} stroke="none"
-              label={{ value: "Growing, few empty flats: tight", position: "insideTopLeft", fontSize: 12, fill: "var(--d-neg2)", fontWeight: 600 }} />
+              label={{ value: t("Growing, few empty flats: tight", "Wachsend, kaum leer: angespannt"), position: "insideTopLeft", fontSize: 12, fill: "var(--d-neg2)", fontWeight: 600 }} />
             <ReferenceArea x1={mv} x2={11} y1={ymin} y2={mp} fill="var(--d-pos2)" fillOpacity={0.05} stroke="none"
-              label={{ value: "Shrinking, many empty flats: slack", position: "insideBottomRight", fontSize: 12, fill: "var(--d-pos2)", fontWeight: 600 }} />
+              label={{ value: t("Shrinking, many empty flats: slack", "Schrumpfend, viel leer: entspannt"), position: "insideBottomRight", fontSize: 12, fill: "var(--d-pos2)", fontWeight: 600 }} />
             <XAxis type="number" dataKey="market_active_vacancy_pct" scale="log" domain={[0.6, 11]} ticks={[1, 2, 3, 5, 10]}
-              tickFormatter={(v) => `${v}%`} stroke="var(--muted)" tick={{ fontSize: 12 }}
-              label={{ value: "Flats empty and available, 2022 (log scale)", position: "insideBottom", offset: -18, fontSize: 12, fill: "var(--muted)" }} />
-            <YAxis type="number" dataKey="population_growth_5y_pct" domain={[ymin, ymax]} ticks={Array.from({ length: Math.floor((ymax - ymin) / 2) + 1 }, (_, i) => Math.ceil(ymin / 2) * 2 + 2 * i).filter((v) => v <= ymax)} tickFormatter={(v) => `${v > 0 ? "+" : ""}${v}%`} stroke="var(--muted)" tick={{ fontSize: 12 }}
-              label={{ value: "Population change over 5 years", angle: -90, position: "insideLeft", fontSize: 12, fill: "var(--muted)", dy: 90 }} />
+              tickFormatter={(v) => pct(v, 0)} stroke="var(--muted)" tick={{ fontSize: 12 }}
+              label={{ value: t("Flats empty and available, 2022 (log scale)", "Leere, verfügbare Wohnungen, 2022 (log. Skala)"), position: "insideBottom", offset: -18, fontSize: 12, fill: "var(--muted)" }} />
+            <YAxis type="number" dataKey="population_growth_5y_pct" domain={[ymin, ymax]} ticks={Array.from({ length: Math.floor((ymax - ymin) / 2) + 1 }, (_, i) => Math.ceil(ymin / 2) * 2 + 2 * i).filter((v) => v <= ymax)} tickFormatter={(v) => pct(v, 0, true)} stroke="var(--muted)" tick={{ fontSize: 12 }}
+              label={{ value: t("Population change over 5 years", "Bevölkerungsveränderung in 5 Jahren"), angle: -90, position: "insideLeft", fontSize: 12, fill: "var(--muted)", dy: 90 }} />
             <ZAxis type="number" dataKey="population" range={[16, 300]} />
             <ReferenceLine x={mv} stroke="var(--muted)" strokeDasharray="3 3" />
             <ReferenceLine y={mp} stroke="var(--muted)" strokeDasharray="3 3" />
@@ -71,13 +78,13 @@ export function SupplyDemandScatter({ data, highlight }: { data: KreisSupplyDema
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as KreisSupplyDemand;
               return (<div className="tooltip"><b>{d.kreis_name.split(",")[0]}</b> <span className="tt-k">{d.land_name}</span><br />
-                {pct(d.market_active_vacancy_pct)} empty · population {pct(d.population_growth_5y_pct, 1, true)}<br />
-                <span className="tt-k">Index {num(d.supply_demand_index, 2)}, {d.market_balance}{d.rent_eur_sqm != null && ` · 2022 rent ${num(d.rent_eur_sqm, 2)} €/m²`}</span></div>);
+                {pct(d.market_active_vacancy_pct)} {t("empty · population", "leer · Bevölkerung")} {pct(d.population_growth_5y_pct, 1, true)}<br />
+                <span className="tt-k">Index {num(d.supply_demand_index, 2)}, {balance(lang, d.market_balance)}{d.rent_eur_sqm != null && ` · ${t("2022 rent", "Miete 2022")} ${num(d.rent_eur_sqm, 2)} €/m²`}</span></div>);
             }} />
             {found && <ReferenceLine x={found.market_active_vacancy_pct} stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="4 3" ifOverflow="extendDomain" />}
             {found && <ReferenceLine y={found.population_growth_5y_pct} stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="4 3" ifOverflow="extendDomain" />}
             {GROUPS.map((g) => (
-              <Scatter key={g.key} name={g.label} data={data.filter((d) => d.market_balance === g.key)} fill={g.fill} fillOpacity={found ? 0.22 : 0.75}
+              <Scatter key={g.key} name={g.label[li]} data={data.filter((d) => d.market_balance === g.key)} fill={g.fill} fillOpacity={found ? 0.22 : 0.75}
                 stroke="var(--surface)" strokeWidth={1} isAnimationActive={false} />
             ))}
             <Scatter name="Labelled" data={data.filter((d) => d.ags in labels)} fill="none" stroke="var(--ink)" strokeWidth={2}

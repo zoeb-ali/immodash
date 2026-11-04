@@ -5,6 +5,7 @@ import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { data } from "@/lib/data";
 import { Footer } from "@/components/Footer";
+import { SkipLink } from "@/components/SkipLink";
 
 export const metadata: Metadata = {
   title: { default: "ImmoDash · What renting in Germany really costs", template: "%s · ImmoDash" },
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "ImmoDash: map of Germany's 400 districts coloured by asking rent" }],
   },
   twitter: { card: "summary_large_image", title: "ImmoDash: what renting in Germany really costs", images: ["/og.png"] },
+  alternates: { languages: { en: "/", de: "/de" } },
   authors: [{ name: "Zoeb Ali Khan", url: "https://zoeb-ali.github.io" }],
   description:
     "An interactive guide to German rents: how fast asking rents are rising in 37 cities, what a flat costs against local incomes, where the market is tightest, and a 12-month outlook. Rebuilt every week from open data.",
@@ -23,8 +25,9 @@ export const viewport: Viewport = {
   themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f6f6f7" }, { media: "(prefers-color-scheme: dark)", color: "#0f1012" }],
 };
 
-// Apply a stored theme choice and the js flag before paint to avoid a flash.
-const bootScript = `document.documentElement.classList.add("js");try{var t=localStorage.getItem("immodash-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
+// Before paint: the js flag, a stored theme choice, the page language (German pages live under /de), and
+// for a visitor who picked German before, the home page opens in German.
+const bootScript = `var d=document.documentElement,p=location.pathname;d.classList.add("js");if(p==="/de"||p.indexOf("/de/")===0)d.lang="de";try{var t=localStorage.getItem("immodash-theme");if(t)d.setAttribute("data-theme",t);if(p==="/"&&!location.hash&&localStorage.getItem("immodash-lang")==="de")location.replace("/de")}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const meta = data.meta();
@@ -34,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
       <body>
-        <a className="skip" href="#content">Skip to content</a>
+        <SkipLink />
         <Nav />
         <main id="content">{children}</main>
         <Footer latestMonth={meta.latest_month} generatedAt={meta.generated_at} />

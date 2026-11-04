@@ -21,6 +21,7 @@ cd web && npm install && npm run dev   # website on http://localhost:3000
 | New API endpoint | `api/main.py` + a Pydantic model in `api/schemas.py` | A test in `tests/test_api.py`, the list in `scripts/verify.py` |
 | New file for the website | `scripts/export_static.py` | `PUBLISHED` list in `scripts/gen_data_dictionary.py` |
 | A decision with trade-offs (new library, method, data source, hosting) | New ADR from `docs/adr/0000-template.md` | Link it from the changelog entry |
+| Any text on the website | The view in `web/views/` (or the component), always in English and German: `t("…", "…")` | Check the `/de` page too |
 | A claim on the website that goes beyond our own numbers | Text + `<Cite id>` | `web/lib/references.ts` with a checked link |
 
 ## Rules

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useI18n } from "@/lib/useLang";
 
 /** Tooltip for the server-rendered hero map: one delegated mouse handler for all 400 districts. */
 export function HeroMapHover({ children, rents, names }: { children: ReactNode; rents: Record<string, number>; names: Record<string, string> }) {
+  const { t, f } = useI18n();
   const [hover, setHover] = useState<{ ags: string; x: number; y: number } | null>(null);
   return (
     <div className="mapwrap" onMouseLeave={() => setHover(null)}
@@ -17,7 +19,7 @@ export function HeroMapHover({ children, rents, names }: { children: ReactNode; 
       {children}
       {hover && rents[hover.ags] != null && (
         <div className="tooltip" style={{ position: "absolute", left: Math.min(hover.x + 12, 260), top: hover.y + 12, pointerEvents: "none" }}>
-          <b>{names[hover.ags]?.split(",")[0]}</b><br />about {rents[hover.ags].toFixed(2)} € per m²
+          <b>{names[hover.ags]?.split(",")[0]}</b><br />{t("about", "etwa")} {f.num(rents[hover.ags], 2)} € {t("per m²", "pro m²")}
         </div>
       )}
     </div>

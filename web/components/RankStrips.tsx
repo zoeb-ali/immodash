@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ordinal } from "@/lib/format";
+import { cityName, LOCALE } from "@/lib/i18n";
+import { useI18n } from "@/lib/useLang";
 import { useWidth } from "@/lib/useWidth";
 
 export type Fmt = { d: number; suffix: string; sign?: boolean };
-const fmtV = (f: Fmt, v: number) => `${f.sign && v > 0 ? "+" : ""}${v.toLocaleString("en-GB", { minimumFractionDigits: f.d, maximumFractionDigits: f.d })}${f.suffix}`;
+const fmtV = (f: Fmt, v: number, loc = "en-GB") => `${f.sign && v > 0 ? "+" : ""}${v.toLocaleString(loc, { minimumFractionDigits: f.d, maximumFractionDigits: f.d })}${f.suffix}`;
 
 export type Strip = {
   key: string; label: string; fmt: Fmt; higherIs: string; lowerIs: string;
@@ -28,6 +29,9 @@ export function RankStrips({ strips, city }: { strips: Strip[]; city: string }) 
   const [ref, w] = useWidth<HTMLDivElement>(560);
   const [hover, setHover] = useState<{ strip: string; city: string; x: number } | null>(null);
   const pad = 10;
+  const { lang, f: fm } = useI18n();
+  const ordinal = fm.ordinal;
+  const fv = (f: Fmt, v: number) => fmtV(f, v, LOCALE[lang]);
 
   return (
     <div ref={ref} style={{ display: "grid", gap: 22 }}>
@@ -39,17 +43,19 @@ export function RankStrips({ strips, city }: { strips: Strip[]; city: string }) 
         const x = (v: number) => pad + ((v - lo) / (hi - lo || 1)) * (w - 2 * pad);
         const rankHigh = [...vals].sort((a, b) => b.v - a.v).findIndex((x) => x.city === city) + 1;
         const n = vals.length;
-        const words = rankHigh <= n / 2 ? `${rankHigh === 1 ? "The" : ordinal(rankHigh)} ${s.higherIs} of ${n}`
+        const words = lang === "de"
+          ? (rankHigh <= n / 2 ? `Platz ${rankHigh} von ${n} (${s.higherIs})` : `Platz ${n + 1 - rankHigh} von ${n} (${s.lowerIs})`)
+          : rankHigh <= n / 2 ? `${rankHigh === 1 ? "The" : ordinal(rankHigh)} ${s.higherIs} of ${n}`
           : `${n + 1 - rankHigh === 1 ? "The" : ordinal(n + 1 - rankHigh)} ${s.lowerIs} of ${n}`;
         const hv = hover?.strip === s.key ? vals.find((v) => v.city === hover.city) : null;
         return (
           <div key={s.key}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
               <span style={{ font: "600 14px var(--sans)" }}>{s.label}</span>
-              <span style={{ font: "400 15px var(--serif)", color: "var(--ink-2)" }}><b style={{ color: "var(--ink)", fontFamily: "var(--sans)" }}>{fmtV(s.fmt, me.v)}</b> · {words}</span>
+              <span style={{ font: "400 15px var(--serif)", color: "var(--ink-2)" }}><b style={{ color: "var(--ink)", fontFamily: "var(--sans)" }}>{fv(s.fmt, me.v)}</b> · {words}</span>
             </div>
             <div style={{ position: "relative" }}>
-              <svg className="svgchart" width={w} height={52} role="img" aria-label={`${s.label}: ${fmtV(s.fmt, me.v)}, ${words}`}>
+              <svg className="svgchart" width={w} height={52} role="img" aria-label={`${s.label}: ${fv(s.fmt, me.v)}, ${words}`}>
                 <line x1={pad} x2={w - pad} y1={28} y2={28} stroke="var(--line)" strokeWidth={2} />
                 {dodge(vals.filter((v) => v.city !== city).map((v) => ({ ...v, cx: x(v.v) }))).map((v) => (
                   <circle key={v.city} cx={v.cx} cy={28 + v.dy} r={4.5} fill="var(--context)" stroke="var(--surface)" strokeWidth={1.5}
@@ -59,11 +65,11 @@ export function RankStrips({ strips, city }: { strips: Strip[]; city: string }) 
               </svg>
               {hv && (
                 <div className="tooltip" style={{ position: "absolute", left: Math.min(hover!.x + 8, w - 150), top: -30, pointerEvents: "none", padding: "4px 8px" }}>
-                  {hv.city_en}: <b>{fmtV(s.fmt, hv.v)}</b>
+                  {cityName(lang, hv)}: <b>{fv(s.fmt, hv.v)}</b>
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "space-between", font: "12px var(--sans)", color: "var(--muted)" }}>
-                <span>{fmtV(s.fmt, lo)}</span><span>{fmtV(s.fmt, hi)}</span>
+                <span>{fv(s.fmt, lo)}</span><span>{fv(s.fmt, hi)}</span>
               </div>
             </div>
           </div>

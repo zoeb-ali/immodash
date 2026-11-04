@@ -8,12 +8,20 @@ PATCH for fixes. The weekly `data: weekly refresh` commits by the bot change dat
 ## [Unreleased]
 
 ### Added
+- German version of the whole site under `/de` (all pages, charts, tooltips, glossary, references), with an EN | DE
+  switch in the header that opens the same page in the other language. German pages use German number formats
+  (1.050,00 €, 3,5 %), German city names and `lang="de"`; every page links its counterpart with `hreflang`.
+  A visitor who picked German before lands on `/de` when opening the home page. City summaries written by the AI
+  stay English for now and are labelled as such. See ADR 0009.
 - Project documentation set following `~/Projects/_standards/PROJECT_DOCS_STANDARD.md`: this changelog,
   `CONTRIBUTING.md`, `docs/RUNBOOK.md`, `docs/README.md` (documentation index), ADR template and ADRs 0007 (postcode estimates and rent ranges) and 0008 (street map).
 - Data dictionary generated from the warehouse: `docs/DATA_DICTIONARY.md`, with column definitions in
   `docs/codebook/columns.yml`, the generator `scripts/gen_data_dictionary.py`, and `make docs` / `make docs-check`.
 
 ### Changed
+- Pages are rendered by language-aware views in `web/views/`; `web/app/*` and `web/app/de/*` are thin route files.
+  Shared helpers: `web/lib/i18n.ts`, `web/lib/useLang.ts`, `fmt(lang)` in `web/lib/format.ts`, `pageMeta` in `web/lib/meta.ts`.
+- The inline navigation starts at 1081 px (was 921 px) to make room for the language switch and the longer German labels.
 - Page heroes: key figures moved from beside the title to one row across the full width under it.
 - How it works, About and Supply & demand open with a full-screen hero (title, lead, key figures, scroll cue);
   the page content starts after scrolling.

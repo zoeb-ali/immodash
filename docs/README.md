@@ -8,7 +8,7 @@ Start here when you take over ImmoDash. Read in this order:
 | 2 | [`RUNBOOK.md`](RUNBOOK.md) | How production runs, health checks, what to do when something breaks |
 | 3 | [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) | Every table and column, with units and tests (generated) |
 | 4 | [`data_sources.md`](data_sources.md) | Where each raw file comes from, licence, refresh cadence |
-| 5 | [`adr/`](adr/) | Why the big decisions were made (0001 to 0008, template in 0000) |
+| 5 | [`adr/`](adr/) | Why the big decisions were made (0001 to 0009, template in 0000) |
 | 6 | [`../CHANGELOG.md`](../CHANGELOG.md) | What changed in each version |
 | 7 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | How to make a change and what to update with it |
 | 8 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Setting up GitHub, Vercel and the weekly refresh from scratch |

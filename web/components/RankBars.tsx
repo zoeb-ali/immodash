@@ -1,9 +1,10 @@
 // Horizontal ranked bars in plain HTML (server-rendered, responsive, readable without JS).
-export function RankBars({ rows, max, tone, fmt }: {
-  rows: { label: string; sub?: string; v: number; note?: string }[]; max: number; tone: "good" | "bad" | "neutral"; fmt: "pct" | "eur" | "index";
+export function RankBars({ rows, max, tone, fmt, lang = "en" }: {
+  rows: { label: string; sub?: string; v: number; note?: string }[]; max: number; tone: "good" | "bad" | "neutral"; fmt: "pct" | "eur" | "index"; lang?: "en" | "de";
 }) {
   const fill = tone === "bad" ? "var(--d-neg2)" : tone === "good" ? "var(--d-pos2)" : "var(--s1)";
-  const f = (v: number) => (fmt === "pct" ? `${v.toFixed(1)}%` : fmt === "index" ? v.toFixed(2) : `${v.toFixed(2)} €`);
+  const n = (v: number, d: number) => v.toLocaleString(lang === "de" ? "de-DE" : "en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const f = (v: number) => (fmt === "pct" ? `${n(v, 1)}${lang === "de" ? " %" : "%"}` : fmt === "index" ? n(v, 2) : `${n(v, 2)} €`);
   return (
     <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
       {rows.map((r, i) => (
