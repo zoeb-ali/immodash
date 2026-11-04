@@ -8,6 +8,10 @@ PATCH for fixes. The weekly `data: weekly refresh` commits by the bot change dat
 ## [Unreleased]
 
 ### Added
+- About page: the 50-second pitch film (`web/public/video/immodash-pitch.mp4`, 1600 px H.264, 5.9 MB) in a section
+  before "Growing up in Mumbai", shown as a poster with a play button; the video loads only on play (`PitchVideo.tsx`).
+- About page hero: Berlin's Zensus 100 m rent grid as a background picture behind the title, one version per theme,
+  fading towards the text, with a note saying what it shows. Rendered from our own data by `scripts/render_hero_grid.py`.
 - German version of the whole site under `/de` (all pages, charts, tooltips, glossary, references), with an EN | DE
   switch in the header that opens the same page in the other language. German pages use German number formats
   (1.050,00 €, 3,5 %), German city names and `lang="de"`; every page links its counterpart with `hreflang`.

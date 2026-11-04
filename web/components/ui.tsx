@@ -66,18 +66,21 @@ export function Stat({ label, value, unit, say }: { label: ReactNode; value: Rea
 
 /** Inner-page hero: title and lead, then the page's key facts in one row across the full width.
  *  `full` makes the hero fill the first screen, so the page content starts only after scrolling. */
-export function PageHero({ title, lead, facts, label, full = false, de = false }: {
+export function PageHero({ title, lead, facts, label, full = false, de = false, bg, bgNote }: {
   title: ReactNode; lead: ReactNode; facts?: ReactNode; label?: string; full?: boolean; de?: boolean;
+  /** Optional background picture behind the title: a CSS class that sets it (see .hero-bg-* in globals.css). */
+  bg?: string; bgNote?: ReactNode;
 }) {
   return (
     <>
-    <header className={`hero page-hero${full ? " full" : ""}`}>
+    <header className={`hero page-hero${full ? " full" : ""}${bg ? ` has-bg ${bg}` : ""}`}>
       <div className="wrap page-hero-inner">
         <div className="page-hero-text">
           <h1 className="enter">{title}</h1>
           <p className="lead enter">{lead}</p>
         </div>
         {facts && <aside className="hero-facts enter" aria-label={label ?? (de ? "Kennzahlen" : "Key figures")}><ul className="stats one">{facts}</ul></aside>}
+        {bgNote && <p className="hero-bg-note">{bgNote}</p>}
         {full && (
           <a className="scroll-cue" href="#after-hero" aria-label={de ? "Zum Inhalt scrollen" : "Scroll to the content"}>
             <span>{de ? "Weiter" : "Scroll"}</span><ArrowDown size={16} weight="bold" aria-hidden />

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import { Cite } from "@/components/Cite";
+import { PitchVideo } from "@/components/PitchVideo";
 import { Head, PageHero, Stat, Takeaway } from "@/components/ui";
 import { href, tx, type Lang } from "@/lib/i18n";
 
@@ -24,6 +25,8 @@ export function AboutView({ lang }: { lang: Lang }) {
         lead={t("I grew up in Mumbai, one of the most crowded cities in the world. Moving to Germany taught me that the same question follows people on small incomes everywhere: how much of what I earn will the roof take?",
           "Ich bin in Mumbai aufgewachsen, einer der am dichtesten besiedelten Städte der Welt. Der Umzug nach Deutschland hat mir gezeigt, dass Menschen mit kleinem Einkommen überall dieselbe Frage begleitet: Wie viel von dem, was ich verdiene, frisst das Dach über dem Kopf?")}
         label={t("The numbers behind this story", "Die Zahlen hinter dieser Geschichte")}
+        bg="hero-bg-grid"
+        bgNote={t("Background: rent per 100 m square in Berlin, Zensus 2022. Stronger blue is dearer.", "Hintergrund: Miete je 100-m-Quadrat in Berlin, Zensus 2022. Kräftigeres Blau ist teurer.")}
         facts={<>
           <Stat label="Mumbai" value="~20" unit={t("million people", "Mio. Menschen")} say={<>{t("One of the largest cities on earth.", "Eine der größten Städte der Welt.")}<Cite id="unwup2018" /></>} />
           <Stat label={t("Living in slums", "Leben in Slums")} value={t("41.8%", "41,8 %")} unit="Greater Mumbai" say={<>{t("About 5.2 million people, Census 2011.", "Etwa 5,2 Millionen Menschen, Zensus 2011.")}<Cite id="bhagat2016" /></>} />
@@ -32,6 +35,20 @@ export function AboutView({ lang }: { lang: Lang }) {
           <Stat label={t("Overburdened", "Überlastet")} value={t("35.0%", "35,0 %")} unit={t("of them", "von ihnen")}
             say={<>{t("Spend more than 40% of their income on housing, against 11.2% of everyone.", "Geben mehr als 40 % ihres Einkommens fürs Wohnen aus, gegenüber 11,2 % aller Menschen.")}<Cite id="destatis-overburden" /></>} />
         </>} />
+
+      <section className="section tight about-film">
+        <div className="wrap split wl about-split">
+          <div className="reveal">
+            <h2>{t("ImmoDash in 50 seconds", "ImmoDash in 50 Sekunden")}</h2>
+            <p className="prose" style={{ marginTop: 14 }}>
+              {t("One question, answered with open data: is the rent you are offered fair? The short film shows what the site does, from the trend in 37 cities to the 12-month outlook.",
+                "Eine Frage, beantwortet mit offenen Daten: Ist die Miete, die Ihnen angeboten wird, fair? Der kurze Film zeigt, was die Seite kann, vom Trend in 37 Städten bis zum Ausblick auf 12 Monate.")}
+            </p>
+            {de && <p className="note" style={{ marginTop: 10 }}>Das Video ist auf Englisch.</p>}
+          </div>
+          <div className="reveal"><PitchVideo /></div>
+        </div>
+      </section>
 
       <section className="section tight">
         <div className="wrap split wl about-split">
