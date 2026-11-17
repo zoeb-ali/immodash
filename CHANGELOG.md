@@ -7,6 +7,21 @@ PATCH for fixes. The weekly `data: weekly refresh` commits by the bot change dat
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-17
+
+### Security
+- Next.js 16.3.8 → 16.4.6 and MapLibre GL 5.24 → 6.18 (critical advisories published after 1.5.0; caught by the
+  new `npm audit` step in CI). The site is a static export, so the Next.js server-side issues did not apply to it.
+  MapLibre 6 loads its web worker from a separate file: `web/scripts/copy-maplibre-worker.mjs` copies it to
+  `/vendor/` at build and `RentMap.tsx` points the library at it.
+
+### Fixed
+- CI: `gold.fct_source_freshness` failed on Postgres (`make_date` needs integer arguments).
+- CI: the API Docker image could not install the package because `ml/`, `flows/` and `dashboard/` were not copied
+  (their dependencies are still not installed in that image). `pyproject.toml` uses the SPDX licence string.
+- CI: `scripts/verify.py` ran the data-recency tests (weekly refresh only) and counted dbt exposures as failures.
+- The local preview server (`web/scripts/serve-out.mjs`) serves `.mjs` files as JavaScript.
+
 ## [1.5.0] - 2026-11-12
 
 Fixes from the November 2026 engineering audit (`Audit report/immodash-audit-2026-11.md` has the finding-by-finding log).
@@ -172,7 +187,8 @@ Fixes from the November 2026 engineering audit (`Audit report/immodash-audit-202
 - Grounded LLM city summaries; Prefect flow; Docker Compose; CI on GitHub Actions.
 - Weekly `refresh-site` workflow that rebuilds the data and redeploys the site on Vercel.
 
-[Unreleased]: https://github.com/zoeb-ali/immodash/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/zoeb-ali/immodash/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/zoeb-ali/immodash/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/zoeb-ali/immodash/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/zoeb-ali/immodash/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/zoeb-ali/immodash/compare/v1.3.0...v1.4.0

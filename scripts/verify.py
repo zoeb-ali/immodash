@@ -144,7 +144,8 @@ def check_ingest(url: str):
 
 
 def check_dbt(env: dict, target_dir: Path):
-    p = run(["dbt", "build", "--target-path", str(target_dir)], env=env, cwd=ROOT / "dbt")
+    # data-recency tests (tag:freshness) belong to the weekly refresh, not to code verification
+    p = run(["dbt", "build", "--exclude", "tag:freshness", "--target-path", str(target_dir)], env=env, cwd=ROOT / "dbt")
     res = json.loads((target_dir / "run_results.json").read_text())["results"]
     rows = [
         {
@@ -154,6 +155,7 @@ def check_dbt(env: dict, target_dir: Path):
             "seconds": round(r["execution_time"], 2),
         }
         for r in res
+        if not r["unique_id"].startswith("exposure.")  # exposures are documentation (status no-op), not checks
     ]
     n_models = sum(r["type"] in ("model", "seed") for r in rows)
     n_tests = sum(r["type"] == "test" for r in rows)

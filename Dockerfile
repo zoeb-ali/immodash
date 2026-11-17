@@ -16,6 +16,11 @@ RUN pip install --require-hashes -r requirements-api.lock
 COPY pyproject.toml README.md ./
 COPY api ./api
 COPY ingestion ./ingestion
+# The package metadata (version) needs every package directory listed in pyproject.toml. ml, flows and dashboard
+# are small source folders; their heavy dependencies (LightGBM, Prefect, Dash) are NOT installed in this image.
+COPY ml ./ml
+COPY flows ./flows
+COPY dashboard ./dashboard
 RUN pip install --no-deps -e . && chown -R appuser /app
 USER appuser
 EXPOSE 8000

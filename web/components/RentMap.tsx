@@ -87,7 +87,10 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
     };
 
     (async () => {
-      const ml = (await import("maplibre-gl")).default;
+      const ml = await import("maplibre-gl"); // v6: ES module with named exports
+      // v6 loads its worker from a file next to the library, which the bundler does not ship; we serve a copy
+      // (scripts/copy-maplibre-worker.mjs) and the version query busts the cache when the library is updated.
+      ml.setWorkerUrl(`/vendor/maplibre-gl-worker.mjs?v=${ml.getVersion()}`);
       if (cancelled || !box.current) return;
       const styleUrl = isDark() ? STYLE.dark : STYLE.light;
       if (!map) {

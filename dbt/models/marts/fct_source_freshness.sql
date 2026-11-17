@@ -8,7 +8,7 @@ with periods as (
     from {{ ref('stg_greix__city_rents') }} where frequency = 'monthly'
     union all
     select 'greix_rent_vs_sales', 'GREIX rent vs. sales index (quarterly)',
-           max(make_date(year, (quarter - 1) * 3 + 1, 1)), 'irregular (last update Q2 2025)', 240, null
+           max(make_date(cast(year as integer), cast((quarter - 1) * 3 + 1 as integer), 1)), 'irregular (last update Q2 2025)', 240, null
     from {{ source('bronze', 'greix_rent_vs_sales') }}
     union all
     select 'bundesbank_mortgage_rate', 'Bundesbank rate on new housing loans',
@@ -16,7 +16,7 @@ with periods as (
     from {{ ref('stg_bundesbank__mortgage_rate') }}
     union all
     select 'vgrdl_income', 'Regional disposable income (VGRdL)',
-           make_date(max(year), 12, 31), 'annual edition each summer', 900, 1250
+           make_date(cast(max(year) as integer), 12, 31), 'annual edition each summer', 900, 1250
     from {{ ref('stg_vgrdl__regional_accounts') }} where disposable_income_per_resident_eur is not null
     union all
     select 'zensus', 'Zensus 2022 tables and grid', make_date(2022, 5, 15), 'static (census reference date)', null, null

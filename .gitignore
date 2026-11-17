@@ -36,3 +36,6 @@ reports/*.json
 
 # DE-8: the Zensus tables are read from the .csv; the .zip copies were duplicates
 data/raw/zensus/*.zip
+
+# copied from node_modules at build (scripts/copy-maplibre-worker.mjs)
+web/public/vendor/

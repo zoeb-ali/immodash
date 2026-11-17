@@ -1,14 +1,14 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "immodash"
-version = "1.5.0"  # single version for Python, dbt, API and web; scripts/check_versions.py keeps them in sync
+version = "1.5.1"  # single version for Python, dbt, API and web; scripts/check_versions.py keeps them in sync
 description = "German rental market intelligence platform"
 requires-python = ">=3.11"  # CI, Docker and the weekly job all run 3.11
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 # Runtime dependencies are declared in requirements.txt and locked (with hashes) in requirements.lock.
 dependencies = []
 
