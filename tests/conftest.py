@@ -12,6 +12,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture(autouse=True)
+def _no_github_job_summary(monkeypatch):
+    """Tests simulate failing downloads; keep their fake "ConnectionError: boom" out of the real CI job summary."""
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+
+
 @pytest.fixture(scope="session")
 def warehouse(tmp_path_factory) -> str:
     """A full warehouse. Set IMMODASH_TEST_WAREHOUSE to reuse one that is already built (the weekly refresh
