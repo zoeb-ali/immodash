@@ -1,0 +1,6 @@
+# Runtime for the local analyst dashboard container (OPS-3). Locked in requirements-dashboard.lock.
+dash>=2.17
+plotly>=5.20
+pandas>=2.2
+httpx>=0.27
+gunicorn>=22.0

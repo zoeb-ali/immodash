@@ -2,31 +2,19 @@
 
 from __future__ import annotations
 
-import os
 import threading
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-ROOT = Path(__file__).resolve().parents[1]
-_DEFAULT = f"duckdb:///{ROOT / 'warehouse' / 'immodash.duckdb'}"
+from immodash_ingest.config import warehouse_url  # one config module for pipeline and API (SWE-1)
+
 _engine: Engine | None = None
 _lock = threading.Lock()
 
-
-def warehouse_url() -> str:
-    return _normalise(os.getenv("WAREHOUSE_URL") or os.getenv("DATABASE_URL") or _DEFAULT)
-
-def _normalise(url: str) -> str:
-    """Accept postgres://... / postgresql://... (Railway, Render, Neon) and use the psycopg 3 driver."""
-    for prefix in ("postgres://", "postgresql://"):
-        if url.startswith(prefix):
-            return "postgresql+psycopg://" + url[len(prefix):]
-    return url
-
+__all__ = ["engine", "fetch_all", "in_clause", "warehouse_url"]
 
 
 def engine() -> Engine:

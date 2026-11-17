@@ -1,22 +1,25 @@
 # Full local stack mirroring production: Postgres warehouse, one-shot pipeline, API, dashboard.
+#   cp .env.example .env   # set POSTGRES_PASSWORD first; there is no default password (SEC-9)
 #   docker compose up --build   ->  API http://localhost:8000/docs · dashboard http://localhost:8050
+# All ports are bound to 127.0.0.1, so nothing is reachable from the network.
 # The public site is static: `python scripts/export_static.py && cd web && npm run build && npx serve out`
 x-warehouse-env: &warehouse-env
-  WAREHOUSE_URL: postgresql+psycopg://immodash:immodash@db:5432/immodash
+  WAREHOUSE_URL: postgresql+psycopg://immodash:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/immodash
   DBT_TARGET: prod
   PGHOST: db
   PGUSER: immodash
-  PGPASSWORD: immodash
+  PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
   PGDATABASE: immodash
+  CORS_ORIGINS: http://localhost:8050
 
 services:
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: immodash
-      POSTGRES_PASSWORD: immodash
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: immodash
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U immodash"]
@@ -24,16 +27,16 @@ services:
       retries: 10
 
   pipeline:
-    build: .
+    build: {context: ., target: pipeline}
     environment: *warehouse-env
     command: ["python", "flows/daily_refresh.py"]
     depends_on:
       db: {condition: service_healthy}
 
   api:
-    build: .
+    build: {context: ., target: api}
     environment: *warehouse-env
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
@@ -43,10 +46,10 @@ services:
       pipeline: {condition: service_completed_successfully}
 
   dashboard:
-    build: .
+    build: {context: ., target: dashboard}
     environment:
       API_URL: http://api:8000
-    ports: ["8050:8050"]
+    ports: ["127.0.0.1:8050:8050"]
     command: ["gunicorn", "dashboard.app:server", "--bind", "0.0.0.0:8050", "--workers", "2", "--timeout", "120"]
     depends_on: [api]
 

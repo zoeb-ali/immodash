@@ -31,15 +31,15 @@ flowchart LR
     end
     Sources -->|immodash_ingest| BR[(bronze)]
     BR -->|dbt staging| SI[(silver)]
-    SI -->|dbt marts + 75 tests| GO[(gold)]
+    SI -->|dbt marts + data tests| GO[(gold)]
     GO -->|python -m ml| ML[(ml: forecasts,<br/>anomalies)]
     GO --> API[FastAPI<br/>typed contracts]
     ML --> API
     LLM[Groq LLM<br/>+ grounding check] -.optional.-> API
     API -->|export_static.py| SNAP[(JSON snapshot)]
     SNAP --> WEB[Next.js static site<br/>Vercel CDN]
-    API --> DASH[Plotly Dash<br/>analyst dashboard]
-    PF[Prefect daily flow] -.orchestrates.-> BR
+    API --> DASH[Plotly Dash<br/>local analyst tool]
+    PF[Prefect flow, local option] -.orchestrates.-> BR
     PF -.-> SI
 ```
 
@@ -47,13 +47,13 @@ flowchart LR
 |---|---|
 | Ingestion | Python (`requests`, `pandas`, `openpyxl`), one parser per source, idempotent bronze loads |
 | Warehouse | DuckDB locally, PostgreSQL in production. The same dbt project runs on both. |
-| Transformations | dbt: bronze → silver (staging views) → gold (marts), plus 75 data tests |
+| Transformations | dbt: bronze → silver (staging views) → gold (marts), plus 90 data tests (row values, volumes, relationships, and data recency in the weekly run) |
 | Intelligence | LightGBM quantile regression + conformal calibration, robust-z anomaly detection, Groq LLM with a numeric grounding check |
 | Geo | pyproj + shapely: 136k 1 km and 245k 100 m Zensus grid cells assigned to Kreise |
-| Orchestration | Prefect flow `immodash-daily-refresh`; weekly GitHub Actions job that rebuilds everything and publishes the site snapshot |
+| Orchestration | Production: the weekly GitHub Actions job `refresh-site` (ingest with health checks, dbt, ML, quality gate, export, snapshot validation, site build, then a separate publish job). The Prefect flow `immodash-daily-refresh` is a local/self-hosted option only and does not publish the site |
 | API | FastAPI with Pydantic response models (`/docs` for OpenAPI) |
 | Frontend | Next.js 16 static export + Recharts + d3-geo, built from a JSON snapshot of the API: overview, city pages with 100 m canvas heatmaps, Kreis map, supply/demand, affordability finder, methodology |
-| Dashboard | Plotly Dash analyst workbench: crossfiltering, choropleth, light/dark themes, validated colour palette |
+| Dashboard | Plotly Dash analyst workbench, run locally only (the public product is the website, see ADR 0010): crossfiltering, choropleth, light/dark themes |
 | Deployment | Free and always on: Vercel static hosting + weekly GitHub Actions refresh (`refresh-site.yml`); optional hosted API on Render/Railway. See `docs/DEPLOYMENT.md` |
 | CI | GitHub Actions: ruff, dbt build on DuckDB **and** Postgres, pytest, end-to-end verification report, Next.js type-check and build |
 
@@ -92,7 +92,10 @@ Lighthouse 12, desktop profile, production build:
 
 The home page map is projected at build time and charts below the fold mount when they scroll into view.
 On Lighthouse's throttled mobile profile the chart-heavy pages score lower on performance (main-thread
-time for interactive charts); accessibility, best practices and SEO stay at 100.
+time for interactive charts); accessibility, best practices and SEO stay at 100. These numbers are no longer
+entered by hand: CI runs Lighthouse CI on every push with desktop and mobile budgets (`web/lighthouserc*.json`)
+and keeps the reports as a build artifact, next to Playwright smoke tests and axe accessibility checks for every
+page in both languages.
 
 ## What the analyst dashboard answers
 
@@ -119,16 +122,17 @@ time for interactive charts); accessibility, best practices and SEO stay at 100.
 |---|---|---|
 | Rent burden (Kreis) | Zensus 2022 rent × 60 m² × 12 ÷ (2 × disposable income per resident, 2022) | `fct_kreis_affordability` |
 | Affordability index | Median Kreis burden ÷ Kreis burden × 100 (100 = median, above 100 = more affordable) | `fct_kreis_affordability` |
-| Asking rent burden (city) | Latest GREIX median asking rent × 60 m² × 12 ÷ (2 × latest disposable income per resident) | `fct_city_snapshot` |
-| Asking premium | GREIX median asking rent ÷ Zensus 2022 existing-contract rent − 1 | `fct_city_snapshot` |
-| Est. asking rent (Kreis) | Zensus rent × (1 + premium), using the city's own premium, else the Land median, else the national median | `fct_kreis_asking_rent_estimate` |
+| Asking rent burden (city) | Latest GREIX median asking rent × 60 m² × 12 ÷ (2 × latest disposable income per resident). Income is from 2023 and per resident (children and pensioners included) | `fct_city_snapshot` |
+| Asking rent vs. 2022 leases | GREIX median asking rent ÷ Zensus 2022 mean existing-contract rent − 1. A gap between two different measures (median of new listings vs. mean of all leases, four years apart), not a like-for-like price change | `fct_city_snapshot` |
+| Est. asking rent (Kreis) | Zensus rent × (1 + premium), using the city's own premium, else the Land median, else the national median. Modelled values carry a ± range from a leave-one-out test on the 37 cities (median error 6 %, 80th percentile 10 %) | `fct_kreis_asking_rent_estimate`, `fct_asking_estimate_validation` |
 | Demand pressure score | Mean of z-scores of (inverted) days on market and share of listings closed within a week, per quarter | `fct_city_market_pressure` |
 | Supply-demand index | z(population growth 2018 to 2023) − z(market-active vacancy 2022); ≥ 1 tight, ≤ −1 slack | `fct_kreis_supply_demand` |
 | Neighbourhood spread | P90 / P10 of reliable 1 km grid-cell rents within a Kreis | `fct_kreis_neighbourhood_spread` |
 | Rent range (Kreis) | P10 and P90 of reliable grid-cell rents relative to the median (100 m cells in the 37 city Kreise, 1 km elsewhere); the finder applies them to the Kreis estimate | `fct_kreis_rent_range` |
 | Postcode rent | Median of the postcode's reliable 100 m cells ÷ city median × 100; the finder scales the city estimate by it | `fct_postcode_rent` |
-| Rent forecast | LightGBM quantile models per horizon on the hedonic index, converted to €/m²; 80 % band widened by sequential split-conformal calibration | `ml.rent_forecast` |
-| Anomaly | City MoM change minus cross-city median MoM, robust z vs. the city's previous 24 months, \|z\| ≥ 3.5 | `ml.rent_anomalies` |
+| Rent forecast | LightGBM quantile models per horizon on the hedonic index (no city identifier), applied to a 3-month average of the median and labelled with its target month; 80 % band widened by sequential split-conformal calibration; back-tested every quarter since 2015 | `ml.rent_forecast`, `ml.forecast_backtest(_city)` |
+| Anomaly | City MoM change of the hedonic index minus cross-city median MoM, robust z vs. the city's previous 24 months, \|z\| ≥ 3.5, kept only if not reversed the next month | `ml.rent_anomalies` |
+| Data recency | Newest period in each source vs. its release cadence; late = warning, stale = refresh fails | `fct_source_freshness` |
 | Reference loan payment | €300k × (rate + 2% amortisation) ÷ 12 | `fct_mortgage_rates` |
 
 The assumptions (60 m², 2 residents, €300k, 2%) are dbt `vars` in `dbt/dbt_project.yml`. The reasoning
@@ -172,9 +176,11 @@ dbt build and tests, ML, pytest, every API endpoint over HTTP, every dashboard c
 dark mode, and (with `--postgres URL`) the whole production path on Postgres. It writes
 `reports/verification_report.html` with the results and interactive charts.
 
-Latest run: 8/8 passed (DuckDB and Postgres), 31 pytest tests, 75 dbt data tests, 27/27 endpoint checks,
-46/46 callback runs. 12-month forecast MAPE 1.74 % vs 2.33 % for trend continuation and 4.59 % for
-"no change"; 82 % of outcomes fell inside the 80 % interval.
+Latest checks (12 November 2026, v1.5.0): 69 pytest tests (39 of them fast unit tests) with 90 % line coverage,
+90 dbt data tests, ruff, mypy, pip-audit (no known vulnerabilities), Playwright + axe on 18 pages in two viewports.
+Full-history back-test (every quarter from July 2015, 38 origins for 12 months ahead): 12-month error 1.45 % vs 1.99 %
+for trend continuation and 3.77 % for "no change", 77.5 % of outcomes inside the 80 % range, direction right in 96 %
+of cases; only 18 of 1,406 outcomes were falls, so the model rarely predicts one.
 
 To run the full production-like stack with Postgres:
 
@@ -184,7 +190,8 @@ docker compose up --build     # db + one-shot pipeline + api + dashboard + site 
 
 Deployment to Railway + Vercel with a custom domain: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-To run the orchestrated refresh: `pip install -r requirements-orchestration.txt`, then
+To run the orchestrated refresh locally (optional; production uses `.github/workflows/refresh-site.yml`):
+`pip install --require-hashes -r requirements-orchestration.lock && pip install --no-deps -e .`, then
 `python flows/daily_refresh.py` for a single run, or `--serve` for a daily 06:15 schedule.
 
 ## Data sources
@@ -193,8 +200,8 @@ To run the orchestrated refresh: `pip install -r requirements-orchestration.txt`
 |---|---|---|---|
 | Zensus 2022, table 4000W-0011 | Average net cold rent per m² by number of rooms (existing contracts) | 400 Kreise, 15 May 2022 | dl-de/by-2-0 |
 | VGR der Länder, R2 B3 (2024) | Disposable household income (total and per resident), population | Kreis, 1995 to 2023 | dl-de/by-2-0 |
-| GREIX Mietpreisindex (Kiel Institute) | Asking rents per m² (mean, median, P25, P75), hedonic index, days on market | 37 cities, monthly 2012 to 2026 | Free with attribution |
-| GREIX rent vs. transaction index | Rent index and sales price index | Cities, quarterly | Free with attribution |
+| GREIX Mietpreisindex (Kiel Institute) | Asking rents per m² (mean, median, P25, P75), hedonic index, days on market | 37 cities, monthly 2012 to 2026 | Published free with attribution requested; redistribution terms not yet confirmed (see RUNBOOK) |
+| GREIX rent vs. transaction index | Rent index and sales price index | Cities, quarterly (last update Q2 2025) | As above |
 | Deutsche Bundesbank (SUD131Z) | Effective interest rate on new housing loans to households | Germany, monthly since 2003 | Free with attribution |
 | Zensus 2022, table 4000W-0002 | Market-active vacancy rate | 400 Kreise | dl-de/by-2-0 |
 | Zensus 2022, table 4000W-0009 | Rent per m² by floor area (20 m² bands) | 400 Kreise | dl-de/by-2-0 |
@@ -209,7 +216,7 @@ Raw files are committed under `data/raw/` so the project builds offline and in C
 ## Project layout
 
 ```
-ingestion/immodash_ingest/   source registry, downloader, parsers, bronze loader
+ingestion/immodash_ingest/   source registry, hardened downloader, parsers, bronze schemas, bronze loader, ingest health checks
 ml/                          forecasting (LightGBM + conformal) and anomaly detection
 dbt/                         staging (silver) + marts (gold), seeds, generic & singular tests
 api/                         FastAPI app, typed schemas, DuckDB/Postgres access
@@ -217,8 +224,10 @@ dashboard/                   Dash app, figure builders, design tokens, assets (C
 flows/                       Prefect daily refresh (ingest -> dbt -> ml)
 web/                         Next.js 16 static site (Vercel); web/public/data is the published snapshot
 deploy/railway/              Railway config-as-code for api, dashboard and the daily refresh cron
-scripts/                     run_local.sh (make demo), verify.py + report.py (make verify)
-tests/                       pytest suite (builds a throwaway warehouse per session)
+scripts/                     run_local.sh (make demo), verify.py + report.py (make verify), export_static.py,
+                             validate_snapshot.py (publish gate), check_versions.py, check_links.py, check_editions.py
+data/history/                ingest log, bronze row counts, every published forecast and model card (append-only)
+tests/                       pytest suite: tests/unit (fast, no warehouse) + contract tests on a throwaway warehouse
 docs/                        documentation index, runbook, data dictionary + codebook, data sources, ADRs, screenshots
 ```
 
@@ -231,6 +240,11 @@ docs/                        documentation index, runbook, data dictionary + cod
   latest of each, and the Kreis affordability index uses 2022 for both.
 - Forecasts cover the 37 GREIX cities, which are the only places with a monthly series.
 - Population growth 2018 to 2023 includes the 2022 refugee arrivals, which raise demand everywhere.
+- The forecast model has seen few falling years (18 falls in 1,406 back-test outcomes), so it rarely predicts
+  a fall. Its bias and direction accuracy are published, and forecasts that point against a city's own last
+  12 months are flagged.
+- Modelled district asking rents were validated only on the 37 large GREIX cities; rural districts may be
+  estimated less well.
 - Boundaries are from 2021. Eisenach (merged into the Wartburgkreis in July 2021) is re-keyed
   to AGS 16063.
 
@@ -242,8 +256,10 @@ docs/                        documentation index, runbook, data dictionary + cod
   heavier charts as static SVG first, to cut main-thread time on low-end phones.
 - **Forecast drivers**: add income, construction permits and interest rates as features, and show which
   ones move each city's outlook.
-- **Data freshness alerts**: notify when a source stops updating, not only when the weekly run fails.
-- **German language version**, since most renters looking at German districts read German first.
+- **German AI summaries** (German pages use the German template today) and translation catalogues instead of
+  inline string pairs.
+- **Live forecast accuracy**: `data/history/forecasts.csv` now keeps every published forecast; once the
+  target months pass, report the real error next to the back-test.
 
 ## Licence
 

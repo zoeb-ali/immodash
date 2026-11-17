@@ -9,7 +9,10 @@ tables:
   ml.rent_forecast: "3, 6 and 12 month asking-rent forecasts per city from LightGBM quantile models, with conformal-calibrated 80% ranges. One row per city, origin month and horizon."
   ml.forecast_backtest: "Rolling-origin back-test of the forecast model against two baselines (no change, trend continuation). One row per horizon and model."
   ml.model_card: "Metadata of the last trained forecast model: features, parameters, training window, calibration. One row per training run."
-  ml.rent_anomalies: "Monthly asking-rent moves per city scored against the city's own previous 24 months, after removing the all-city move. One row per city and month."
+  ml.rent_anomalies: "Monthly moves of each city's hedonic rent index scored against the city's own previous 24 months, after removing the all-city move, with a persistence check. One row per city and month."
+  ml.forecast_backtest_city: "Back-test results per city, horizon and model (error, bias, direction accuracy, coverage). One row per city, horizon and model."
+  gold.fct_source_freshness: "How recent the content of each source is against its release cadence. One row per source."
+  gold.fct_asking_estimate_validation: "Leave-one-out test of the district asking-rent estimate on the 37 GREIX cities. One row per city."
 
 columns:
   # --- keys and names ---------------------------------------------------------------------------
@@ -149,3 +152,34 @@ columns:
   is_anomaly: {desc: "True when abs(robust_z) ≥ 3.5."}
   direction: {desc: "Sign of the unusual move.", values: "spike, drop"}
   severity: {desc: "Size class of abs(robust_z).", values: "normal (< 3.5), notable (3.5 to 5), extreme (> 5)"}
+
+  # --- audit fixes, November 2026 (v1.5.0) ------------------------------------------------------
+  source_key: {desc: "Short key of a data source, as in ingestion/immodash_ingest/config.py."}
+  dataset: {desc: "Human-readable name of the dataset."}
+  data_through: {desc: "Newest period the source's content covers (not when it was downloaded).", unit: "date"}
+  cadence: {desc: "How often the publisher releases new data."}
+  warn_after_days: {desc: "Age of the newest period above which the source counts as later than usual.", unit: "days"}
+  error_after_days: {desc: "Age above which the weekly refresh fails (empty for static sources).", unit: "days"}
+  age_days: {desc: "Days between data_through and the day of the run.", unit: "days"}
+  is_late: {desc: "True when age_days exceeds warn_after_days."}
+  is_stale: {desc: "True when age_days exceeds error_after_days; fails the weekly refresh."}
+  method: {desc: "Rule used for the leave-one-out estimate.", values: "greix_land_median, greix_national_median"}
+  actual_asking_rent_eur_sqm: {desc: "Real GREIX median asking rent of the city in the latest month.", unit: "EUR/m²"}
+  error_pct: {desc: "Estimated minus actual asking rent, as a percentage of the actual.", unit: "%"}
+  is_modelled: {desc: "True when the district has no listing data and its asking rent is modelled from census rents."}
+  estimate_low_eur_sqm: {desc: "Lower end of a modelled estimate: the estimate minus the 80th-percentile leave-one-out error.", unit: "EUR/m²"}
+  estimate_high_eur_sqm: {desc: "Upper end of a modelled estimate: the estimate plus the 80th-percentile leave-one-out error.", unit: "EUR/m²"}
+  base_method: {desc: "What the forecast is scaled from: a three-month average of the median asking rent."}
+  index_change_12m_pct: {desc: "Change of the city's hedonic rent index over the 12 months before the forecast origin.", unit: "%"}
+  disagrees_with_trend: {desc: "True when the forecast direction is opposite to index_change_12m_pct (and that change is at least 1 %)."}
+  bias_pct: {desc: "Mean signed error of back-test forecasts; positive means forecasts were too high.", unit: "%"}
+  direction_accuracy_pct: {desc: "Share of back-test forecasts that got rise vs. fall right (moves under 0.5 % count as flat).", unit: "%"}
+  n_falls: {desc: "Number of back-test outcomes that were falls of more than 0.5 %."}
+  first_origin: {desc: "First forecast origin month in the back-test.", unit: "date"}
+  last_origin: {desc: "Last forecast origin month in the back-test.", unit: "date"}
+  persistence: {desc: "Whether a flagged move held the next month.", values: "persisted, reversed, pending (next month not yet known)"}
+  signal: {desc: "Series the anomaly was measured on.", values: "hedonic index, median asking rent"}
+  seed: {desc: "Random seed used for model training (reproducibility)."}
+  backtest_origins: {desc: "Range and spacing of the back-test origins."}
+  lgbm_mape_12m: {desc: "12-month back-test error of the model at training time.", unit: "%"}
+  lgbm_coverage_12m: {desc: "12-month back-test coverage of the 80 % range at training time.", unit: "%"}

@@ -1,5 +1,8 @@
 """Prefect flow: refresh raw sources -> bronze -> dbt build (silver/gold + tests) -> ML layer.
 
+Local or self-hosted option only (audit DE-7, ADR 0010). Production is the weekly GitHub Actions workflow
+`refresh-site`, which also exports, validates and publishes the site; this flow does not publish anything.
+
 Run once:          python flows/daily_refresh.py
 Serve on schedule: python flows/daily_refresh.py --serve   (daily 06:15 Europe/Berlin)
 """
@@ -13,10 +16,9 @@ from pathlib import Path
 
 from prefect import flow, get_run_logger, task
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "ingestion"))
+from immodash_ingest.pipeline import run as ingest_run
 
-from immodash_ingest.pipeline import run as ingest_run  # noqa: E402
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _dbt_env() -> dict[str, str]:
@@ -27,8 +29,13 @@ def _dbt_env() -> dict[str, str]:
         from sqlalchemy.engine import make_url
 
         u = make_url(url.replace("postgres://", "postgresql://", 1))
-        env.update(PGHOST=u.host or "", PGPORT=str(u.port or 5432), PGUSER=u.username or "",
-                   PGPASSWORD=u.password or "", PGDATABASE=u.database or "")
+        env.update(
+            PGHOST=u.host or "",
+            PGPORT=str(u.port or 5432),
+            PGUSER=u.username or "",
+            PGPASSWORD=u.password or "",
+            PGDATABASE=u.database or "",
+        )
     if url.startswith(("postgres://", "postgresql")):
         env.setdefault("DBT_TARGET", "prod")
     return env

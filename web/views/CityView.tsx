@@ -43,6 +43,7 @@ export function CityView({ lang, slug }: { lang: Lang; slug: string }) {
   const flat = (snap.reference_monthly_rent_eur ?? snap.median_rent_sqm * 60);
   const lastP = pressure[pressure.length - 1];
   const yoy = snap.index_yoy_pct ?? 0;
+  const meta = data.meta();
   const tenseKey = (kreis?.market_balance ?? sdCity?.market_balance) ?? null;
   const tense = tenseKey ? balance(lang, tenseKey) : null;
   const notExact = snap.mapping_type !== "exact";
@@ -77,10 +78,12 @@ export function CityView({ lang, slug }: { lang: Lang; slug: string }) {
             <div>
               <h1 className="enter">{t(`Renting in ${name}`, `Mieten in ${name}`)}</h1>
               <p className="lead enter">
-                {t(<>A new lease costs <b style={ink}>{eur(snap.median_rent_sqm)}</b> per m², {rankWords} of
-                  {" "}{cities.length} cities, {yoy >= 0 ? "up" : "down"} {pct(Math.abs(yoy), 1)} on a year ago{tense && <> in a <b style={ink}>{tense}</b> market</>}.</>,
-                <>Ein neuer Mietvertrag kostet <b style={ink}>{eur(snap.median_rent_sqm)}</b> pro m², {rankWords} von {cities.length} Städten,
-                  {" "}{pct(Math.abs(yoy), 1)} {yoy >= 0 ? "mehr" : "weniger"} als vor einem Jahr{tense && <>, auf einem <b style={ink}>{tense}en</b> Markt</>}.</>)}
+                {t(<>The median asking rent for a new lease is <b style={ink}>{eur(snap.median_rent_sqm)}</b> per m², {rankWords} of
+                  {" "}{cities.length} cities. On the quality-adjusted index, rents are {yoy >= 0 ? "up" : "down"} {pct(Math.abs(yoy), 1)} on a year
+                  ago{tense && <>, in a <b style={ink}>{tense}</b> market</>}.</>,
+                <>Die mittlere Angebotsmiete für einen Neuvertrag liegt bei <b style={ink}>{eur(snap.median_rent_sqm)}</b> pro m², {rankWords} von {cities.length} Städten.
+                  {" "}Nach dem qualitätsbereinigten Index liegen die Mieten {pct(Math.abs(yoy), 1)} {yoy >= 0 ? "über" : "unter"} dem Vorjahr
+                  {tense && <>, auf einem <b style={ink}>{tense}en</b> Markt</>}.</>)}
               </p>
               <p className="meta enter" style={{ marginTop: 14 }}>{snap.land_name && snap.land_name !== snap.city && snap.land_name !== snap.city_en ? `${snap.land_name}. ` : ""}{t("Data up to", "Daten bis")} {monthLong(snap.latest_month)}.</p>
             </div>
@@ -88,12 +91,20 @@ export function CityView({ lang, slug }: { lang: Lang; slug: string }) {
               <ul className="stats one">
                 <Stat label={t("A 60 m² flat, cold", "Eine 60-m²-Wohnung, kalt")} value={num(Math.round(flat / 10) * 10)} unit={t("€/mo", "€/Monat")}
                   say={t(<>Half of listings: {num(snap.p25_rent_sqm, 2)} to {num(snap.p75_rent_sqm, 2)} € per m².</>, <>Die Hälfte der Inserate: {num(snap.p25_rent_sqm, 2)} bis {num(snap.p75_rent_sqm, 2)} € pro m².</>)} />
-                <Stat label={t("Change over five years", "Veränderung in fünf Jahren")} value={pct(snap.index_5y_pct, 0, true)}
-                  say={t(<>{pct(yoy, 1, true)} in the last 12 months.</>, <>{pct(yoy, 1, true)} in den letzten 12 Monaten.</>)} />
-                <Stat label={t("Rent burden", "Mietbelastung")} value={num(snap.asking_rent_burden_pct, 1)} unit="%"
-                  say={t(<>Share of what two average residents earn after tax ({snap.income_year}).</>, <>Anteil am Nettoeinkommen zweier durchschnittlicher Einwohner ({snap.income_year}).</>)} />
-                <Stat label={t("Forecast, next 12 months", "Prognose, nächste 12 Monate")} value={pct(f12?.change_p50_pct, 1, true)}
-                  say={f12 ? t(<>Likely {num(f12.p10_rent_sqm, 2)} to {num(f12.p90_rent_sqm, 2)} € per m².</>, <>Wahrscheinlich {num(f12.p10_rent_sqm, 2)} bis {num(f12.p90_rent_sqm, 2)} € pro m².</>)
+                <Stat label={t("Five-year change, quality-adjusted index", "Fünf Jahre, qualitätsbereinigter Index")} value={pct(snap.index_5y_pct, 0, true)}
+                  say={t(<>{pct(yoy, 1, true)} in the last 12 months on the same index (same kind of flat, not the raw median).</>,
+                    <>{pct(yoy, 1, true)} in den letzten 12 Monaten auf demselben Index (gleiche Art Wohnung, nicht der rohe Median).</>)} />
+                <Stat label={t("Rent burden (asking rent)", "Mietbelastung (Angebotsmiete)")} value={num(snap.asking_rent_burden_pct, 1)} unit="%"
+                  say={t(<>Today&apos;s rent for 60 m² against what two average residents earn after tax. Income is from {snap.income_year} and averages
+                    over all residents, children and pensioners included.</>,
+                    <>Heutige Miete für 60 m² gegenüber dem Nettoeinkommen zweier durchschnittlicher Einwohner. Das Einkommen stammt aus {snap.income_year} und
+                    mittelt über alle Einwohner, auch Kinder und Rentner.</>)} />
+                <Stat label={f12 ? t(`Forecast for ${monthLong(f12.target_month)}`, `Prognose für ${monthLong(f12.target_month)}`) : t("Forecast", "Prognose")}
+                  value={pct(f12?.change_p50_pct, 1, true)}
+                  say={f12 ? t(<>Likely {num(f12.p10_rent_sqm, 2)} to {num(f12.p90_rent_sqm, 2)} € per m², from data up to {monthLong(f12.origin_month)}.
+                    {f12.disagrees_with_trend && <> <b>Note:</b> this points against the city&apos;s own last 12 months ({pct(f12.index_change_12m_pct, 1, true)}).</>}</>,
+                    <>Wahrscheinlich {num(f12.p10_rent_sqm, 2)} bis {num(f12.p90_rent_sqm, 2)} € pro m², aus Daten bis {monthLong(f12.origin_month)}.
+                    {f12.disagrees_with_trend && <> <b>Hinweis:</b> Das widerspricht dem Trend der letzten 12 Monate ({pct(f12.index_change_12m_pct, 1, true)}).</>}</>)
                     : t("No forecast available.", "Keine Prognose verfügbar.")} />
               </ul>
             </div>
@@ -105,14 +116,15 @@ export function CityView({ lang, slug }: { lang: Lang; slug: string }) {
         <div className="wrap split wl">
           <div className="reveal">
             <h2 style={{ marginBottom: 18 }}>{t("The market in brief", "Der Markt in Kürze")}</h2>
-            <div className="summary-lede" lang={de ? "en" : undefined}>
-              {summary.text.split("\n\n").map((p, i) => <p key={i}>{p}</p>)}
+            <div className="summary-lede">
+              {(de && summary.text_de ? summary.text_de : summary.text).split("\n\n").map((p, i) => <p key={i}>{p}</p>)}
             </div>
             <div className="ai-note">
-              <span className="badge">{llm ? t("AI-written", "KI-geschrieben") : t("From the data", "Aus den Daten")}</span>
-              {llm ? <span>{t(<>Written by an AI model ({summary.generated_by.split(":").slice(1).join(":")}). Every number was checked against the data before publishing.</>,
-                <>Von einem KI-Modell geschrieben ({summary.generated_by.split(":").slice(1).join(":")}), bisher nur auf Englisch. Jede Zahl wurde vor der Veröffentlichung mit den Daten abgeglichen.</>)}</span>
-                : <span>{t("Written from a template using the latest figures.", "Aus einer Vorlage mit den neuesten Zahlen erstellt, bisher nur auf Englisch.")}</span>}
+              <span className="badge">{llm && !de ? t("AI-written", "KI-geschrieben") : t("From the data", "Aus den Daten")}</span>
+              {de ? <span>Aus einer Vorlage mit den neuesten Zahlen erstellt. Die KI-Fassung gibt es auf der englischen Seite.</span>
+                : llm ? <span>Written by an AI model ({summary.generated_by.split(":").slice(1).join(":")}). Every number was checked against the data, and
+                  the rank and direction of change against their meaning, before publishing.</span>
+                : <span>Written from a template using the latest figures.</span>}
             </div>
             <details className="howto" style={{ marginTop: 6 }}>
               <summary>{t("The facts this summary was allowed to use", "Die Fakten, die diese Zusammenfassung verwenden durfte")}</summary>
@@ -133,14 +145,14 @@ export function CityView({ lang, slug }: { lang: Lang; slug: string }) {
           <Head title={t(`Where rents in ${name} are heading`, `Wohin sich die Mieten in ${name} entwickeln`)}>
             {t(<>The solid line is the median <Term k="asking-rent" /> each month; the dashed line and band are the model&apos;s forecast.</>,
               <>Die durchgezogene Linie ist die mittlere <Term k="asking-rent" /> jedes Monats; gestrichelte Linie und Band sind die Prognose des Modells.</>)}
-            {f12 && t(<> In a year, a 60 m² flat would most likely be listed at about <b style={ink}>{num(Math.round((f12.p50_rent_sqm * 60) / 10) * 10)} €</b> a month,
+            {f12 && t(<> By {monthLong(f12.target_month)}, a 60 m² flat would most likely be listed at about <b style={ink}>{num(Math.round((f12.p50_rent_sqm * 60) / 10) * 10)} €</b> a month,
               against {num(Math.round(flat / 10) * 10)} € today.</>,
-              <> In einem Jahr würde eine 60-m²-Wohnung am wahrscheinlichsten für etwa <b style={ink}>{num(Math.round((f12.p50_rent_sqm * 60) / 10) * 10)} €</b> im Monat
+              <> Bis {monthLong(f12.target_month)} würde eine 60-m²-Wohnung am wahrscheinlichsten für etwa <b style={ink}>{num(Math.round((f12.p50_rent_sqm * 60) / 10) * 10)} €</b> im Monat
               inseriert, gegenüber {num(Math.round(flat / 10) * 10)} € heute.</>)}
           </Head>
           <Figure title={t(`Median asking rent in ${name}, € per m²`, `Mittlere Angebotsmiete in ${name}, € pro m²`)}
-            sub={t("Monthly, with the 3, 6 and 12-month forecast and its 80% range. Use the menu to compare another city.",
-              "Monatlich, mit der Prognose für 3, 6 und 12 Monate und ihrer 80-%-Spanne. Über das Menü lässt sich eine andere Stadt vergleichen.")}
+            sub={t("Monthly, with the forecast for 3, 6 and 12 months after the latest data month and its 80% range. A model estimate, not financial advice. Use the menu to compare another city.",
+              "Monatlich, mit der Prognose für 3, 6 und 12 Monate nach dem letzten Datenmonat und ihrer 80-%-Spanne. Eine Modellschätzung, keine Finanzberatung. Über das Menü lässt sich eine andere Stadt vergleichen.")}
             source={t("GREIX Mietpreisindex; ImmoDash forecast model.", "GREIX Mietpreisindex; ImmoDash-Prognosemodell.")}
             howto={<>
               {t(<p>The band widens further into the future because uncertainty grows with time. In back-tests, about 8 out of 10 real outcomes fell
@@ -160,9 +172,9 @@ export function CityView({ lang, slug }: { lang: Lang; slug: string }) {
                 <ul className="list">
                   {anomalies.slice(0, 4).map((a) => (
                     <li key={a.period_date}>
-                      {t(<>In {monthLong(a.period_date)} asking rents {a.direction === "spike" ? "jumped" : "fell"} {pct(Math.abs(a.mom_pct), 1)} in a single month,
+                      {t(<>In {monthLong(a.period_date)} the quality-adjusted rent index {a.direction === "spike" ? "jumped" : "fell"} {pct(Math.abs(a.mom_pct), 1)} in a single month,
                         while the typical city moved {pct(a.market_mom_pct, 1, true)}.</>,
-                      <>Im {monthLong(a.period_date)} {a.direction === "spike" ? "sprangen" : "fielen"} die Angebotsmieten in einem einzigen Monat um {pct(Math.abs(a.mom_pct), 1)},
+                      <>Im {monthLong(a.period_date)} {a.direction === "spike" ? "sprang" : "fiel"} der qualitätsbereinigte Mietindex in einem einzigen Monat um {pct(Math.abs(a.mom_pct), 1)},
                         während sich die typische Stadt um {pct(a.market_mom_pct, 1, true)} bewegte.</>)}
                     </li>
                   ))}
@@ -242,13 +254,15 @@ export function CityView({ lang, slug }: { lang: Lang; slug: string }) {
           <div className="reveal"><RentCheck cities={rentCheckCities()} initialCity={city} compact /></div>
           <div style={{ maxWidth: 720 }}>
             <Takeaway label={t("Before you sign", "Bevor Sie unterschreiben")}>
-              {t(<>Asking rents here are {pct(snap.asking_premium_vs_existing_pct, 0)} above what existing tenants paid in 2022. Check the
-                Mietspiegel for {name} and whether the rent cap (Mietpreisbremse) applies to your flat: it can limit how far a new
+              {t(<>The median asking rent here is {pct(snap.asking_premium_vs_existing_pct, 0)} above the average rent existing tenants paid in 2022.
+                Check the Mietspiegel for {name} and whether the rent cap (Mietpreisbremse) applies to your flat: it can limit how far a new
                 rent may exceed the local reference rent.</>,
-              <>Die Angebotsmieten liegen hier {pct(snap.asking_premium_vs_existing_pct, 0)} über dem, was Bestandsmieter 2022 zahlten. Prüfen Sie den
-                Mietspiegel für {name} und ob die Mietpreisbremse für Ihre Wohnung gilt: Sie kann begrenzen, wie weit eine neue Miete die
-                ortsübliche Vergleichsmiete übersteigen darf.</>)}
+              <>Die mittlere Angebotsmiete liegt hier {pct(snap.asking_premium_vs_existing_pct, 0)} über der Durchschnittsmiete, die Bestandsmieter 2022
+                zahlten. Prüfen Sie den Mietspiegel für {name} und ob die Mietpreisbremse für Ihre Wohnung gilt: Sie kann begrenzen, wie weit eine neue
+                Miete die ortsübliche Vergleichsmiete übersteigen darf.</>)}
             </Takeaway>
+            <p className="disclaimer">{t(`General information as of ${f.day(meta.generated_at)}, not legal or financial advice. For your own lease, ask a tenants' association (Mieterverein) or a lawyer.`,
+              `Allgemeine Information, Stand ${f.day(meta.generated_at)}, keine Rechts- oder Finanzberatung. Für den eigenen Vertrag hilft ein Mieterverein oder eine Anwältin bzw. ein Anwalt.`)}</p>
           </div>
           <nav className="pager" aria-label={t("Other cities", "Weitere Städte")}>
             <Link href={to(`/cities/${prev.slug}`)}><span>{t("Previous city", "Vorherige Stadt")}</span><b>{cityName(lang, prev)}</b></Link>

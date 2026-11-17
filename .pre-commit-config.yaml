@@ -1,0 +1,35 @@
+# SWE-8: run the same checks locally before each commit.   pip install pre-commit && pre-commit install
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        args: [--unsafe]   # dbt / GitHub YAML uses custom tags
+      - id: check-json
+        exclude: ^web/public/data/
+      - id: end-of-file-fixer
+        exclude: ^(web/public/data/|data/)
+      - id: trailing-whitespace
+        exclude: ^(web/public/data/|data/)
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+        exclude: ^(data/raw/|web/public/data/|web/public/video/)
+      - id: detect-private-key
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+  - repo: local
+    hooks:
+      - id: versions
+        name: versions agree
+        entry: python scripts/check_versions.py
+        language: system
+        pass_filenames: false
+        files: ^(pyproject.toml|dbt/dbt_project.yml|web/package.json|CHANGELOG.md)$
+      - id: doc-links
+        name: documentation links resolve
+        entry: python scripts/check_links.py
+        language: system
+        pass_filenames: false
+        files: \.md$

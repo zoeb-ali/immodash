@@ -286,7 +286,10 @@ a svg { vertical-align: -2px; }
   color-mix(in srgb, var(--bad) 55%, var(--surface)) 40% 100%); margin-top: 14px; }
 .meter .pin { position: absolute; top: -5px; width: 4px; height: 20px; background: var(--ink); border-radius: 2px; transform: translateX(-2px);
   transition: left 0.35s var(--ease); }
-.meter-scale { display: flex; justify-content: space-between; font: 500 11.5px var(--mono); color: var(--muted); margin-top: 6px; }
+.meter-scale { position: relative; height: 16px; font: 500 11.5px var(--mono); color: var(--muted); margin-top: 6px; }
+.meter-scale span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.meter-scale span.first { transform: none; }
+.meter-scale span.last { transform: translateX(-100%); }
 .verdict { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--sans); padding: 4px 11px; border-radius: var(--r-pill); }
 .verdict.ok { background: color-mix(in srgb, var(--good) 14%, transparent); color: color-mix(in srgb, var(--good) 78%, var(--ink)); }
 .verdict.stretch { background: color-mix(in srgb, var(--warn) 16%, transparent); color: color-mix(in srgb, var(--warn) 78%, var(--ink)); }
@@ -506,3 +509,34 @@ pre { font: 12px/1.5 var(--mono); background: var(--surface-2); padding: 14px; b
 .pitch-play:hover .pitch-play-icon, .pitch-play:focus-visible .pitch-play-icon { transform: scale(1.06); background: var(--accent); }
 .pitch-play:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
 @media (min-width: 921px) { .about-film .about-split { align-items: center; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+
+/* ---------------------------------------------------------------- audit fixes (Nov 2026) */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.audience { margin-top: 14px; font: 500 14px/1.5 var(--sans); color: var(--muted); max-width: 60ch; }
+.disclaimer { margin: 10px 0 0; font: 400 12.5px/1.5 var(--sans); color: var(--muted); }
+/* UX-5: stepped legend for classed maps */
+.legend.legend-steps { flex-wrap: wrap; row-gap: 6px; column-gap: 14px; }
+.legend.legend-steps .sw { width: 14px; height: 14px; border-radius: 3px; }
+/* UX-2: legend sample for districts measured from listings (outlined on the map) */
+.sw-measured { display: inline-block; width: 14px; height: 14px; border: 1.5px solid var(--ink); border-radius: 3px; vertical-align: -2px; }
+/* UX-6: comfortable touch targets on narrow screens, whatever the pointer */
+@media (max-width: 720px) {
+  .chip, .seg button, .textlink, .btn.small, .lang-toggle a { min-height: 44px; }
+  .seg button { padding-inline: 12px; }
+  input[type="range"] { min-height: 44px; }
+  select, input[type="search"], input[type="text"], input[type="number"] { min-height: 44px; }
+  .icon-btn { width: 44px; height: 44px; }
+  .numbers summary, .howto summary { min-height: 44px; display: flex; align-items: center; }
+}
+/* FE-8: the street map could not load its basemap */
+.rentmap-fallback { position: absolute; left: 10px; bottom: 10px; z-index: 3; max-width: 360px; padding: 6px 10px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--line); font: 400 12.5px/1.4 var(--sans); color: var(--ink-2); }
+/* FE-2: hero map as a static image per theme until the interactive copy loads */
+.hero-img { display: block; width: 100%; height: auto; }
+.hero-img-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hero-img-light { display: none; }
+  :root:not([data-theme="light"]) .hero-img-dark { display: block; }
+}
+:root[data-theme="dark"] .hero-img-light { display: none; }
+:root[data-theme="dark"] .hero-img-dark { display: block; }

@@ -36,8 +36,7 @@ def kreis_polygons_3035(geojson_path: Path) -> dict[str, shapely.Geometry]:
 def _read_grid(zip_path: Path, resolution: str) -> pd.DataFrame:
     with zipfile.ZipFile(zip_path) as zf:
         name = next(n for n in zf.namelist() if n.endswith(f"_{resolution}-Gitter.csv"))
-        df = pd.read_csv(zf.open(name), sep=";", decimal=",", encoding="latin-1",
-                         quoting=csv.QUOTE_NONE)
+        df = pd.read_csv(zf.open(name), sep=";", decimal=",", encoding="latin-1", quoting=csv.QUOTE_NONE)
     df.columns = ["grid_id", "x", "y", "rent_eur_sqm", "flag"]
     df["low_reliability"] = df["flag"].eq("KLAMMERN")
     return df.drop(columns="flag")
@@ -90,12 +89,14 @@ def _assign_postcode(df: pd.DataFrame, polys: dict[str, shapely.Geometry]) -> pd
     return pd.Series(plz, index=df.index)
 
 
-def parse_100m_for(zip_path: Path, geojson_path: Path, ags_codes: set[str], postcodes_path: Path | None = None) -> pd.DataFrame:
+def parse_100m_for(
+    zip_path: Path, geojson_path: Path, ags_codes: set[str], postcodes_path: Path | None = None
+) -> pd.DataFrame:
     df = _read_grid(zip_path, "100m")
     out = _assign_kreis(df, kreis_polygons_3035(geojson_path), only=ags_codes)
     out["resolution_m"] = 100
     has_plz = postcodes_path is not None and Path(postcodes_path).exists()
-    out["plz"] = _assign_postcode(out, postcode_polygons_3035(postcodes_path)) if has_plz else None
+    out["plz"] = _assign_postcode(out, postcode_polygons_3035(postcodes_path)) if has_plz and postcodes_path else None
     return out
 
 

@@ -56,10 +56,15 @@ export function StoryView({ lang }: { lang: Lang }) {
   const outMedian = median(out.map((r) => r.mid));
   const outFalling = out.filter((r) => r.mid < 0).length;
   const flat60 = h.medianRent * 60;
+  const fc12 = data.forecasts().filter((x) => x.horizon_months === 12);
+  const origin = fc12[0]?.origin_month ?? lastMonth, target12 = fc12[0]?.target_month ?? lastMonth;
+  const bt12 = bt.find((b) => b.horizon_months === 12 && b.model === "lightgbm");
+  const falls12 = bt12?.n_falls ?? 0, n12 = bt12?.n_forecasts ?? 0;
   const big = [...cities].sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
   const asking = data.askingRents().filter((r) => r.rooms === "total");
   const heroRents = Object.fromEntries(asking.map((r) => [r.ags, r.estimated_asking_rent_eur_sqm]));
   const heroNames = Object.fromEntries(asking.map((r) => [r.ags, r.kreis_name]));
+  const heroScale = heroMap(heroRents);
   const ink = { color: "var(--ink)" };
 
   return (
@@ -70,15 +75,20 @@ export function StoryView({ lang }: { lang: Lang }) {
             <h1 className="enter">{t(<>German city rents rose by {share(h.median5y, lang)} in five years.</>,
               <>Die Mieten in deutschen Städten sind in fünf Jahren um {share(h.median5y, lang)} gestiegen.</>)}</h1>
             <p className="lead enter">{t(
-              <>A new lease costs {num(h.medianPremium)}% more per m² than tenants paid in 2022. See what that means for your budget.</>,
-              <>Ein neuer Mietvertrag kostet pro m² {num(h.medianPremium)} % mehr, als Mieter 2022 gezahlt haben. Sehen Sie, was das für Ihr Budget bedeutet.</>)}
+              <>Today&apos;s typical asking rent is {num(h.medianPremium)}% above what tenants paid on average in 2022, a gap that mixes four years
+                of rising rents with the difference between new and old leases. See what it means for your budget.</>,
+              <>Die typische Angebotsmiete liegt heute {num(h.medianPremium)} % über dem, was Mieter 2022 im Schnitt zahlten. In dieser Lücke stecken
+                vier Jahre steigende Mieten und der Unterschied zwischen neuen und alten Verträgen. Sehen Sie, was das für Ihr Budget bedeutet.</>)}
             </p>
+            <p className="audience enter">{t(
+              "For anyone renting, or about to rent, in Germany: open data, explained, with every source linked.",
+              "Für alle, die in Deutschland mieten oder bald mieten: offene Daten, erklärt, mit jeder Quelle verlinkt.")}</p>
             <div className="hero-cta enter">
               <a className="btn" href="#rent-check">{t("Check your rent", "Miete prüfen")}</a>
               <Link className="textlink" href={to("/cities")}>{t("Browse 37 cities", "Alle 37 Städte")} <ArrowRight size={15} weight="bold" aria-hidden /></Link>
             </div>
           </div>
-          <HeroMap {...heroMap(heroRents)} rents={heroRents} names={heroNames} lang={lang} />
+          <HeroMap lo={heroScale.lo} hi={heroScale.hi} rents={heroRents} names={heroNames} lang={lang} />
         </div>
       </header>
 
@@ -90,8 +100,9 @@ export function StoryView({ lang }: { lang: Lang }) {
                 <>Eine 60-m²-Wohnung in der mittleren Stadt: etwa {num(Math.round(flat60 / 10) * 10)} € im Monat, kalt.</>)} />
             <Stat label={t("Cities where rents rose", "Städte mit steigenden Mieten")} value={h.upYoy} unit={t(`of ${h.n}`, `von ${h.n}`)}
               say={t(<>Over the last 12 months. The typical rise is {pct(h.medianYoy, 1)}.</>, <>In den letzten 12 Monaten. Der typische Anstieg liegt bei {pct(h.medianYoy, 1)}.</>)} />
-            <Stat label={t("Extra for a new lease", "Aufschlag bei Neuvermietung")} value={`+${num(h.medianPremium)}`} unit="%"
-              say={t(<>Per m², compared with existing leases in the typical city.</>, <>Pro m², verglichen mit Bestandsverträgen in der typischen Stadt.</>)} />
+            <Stat label={t("Asking rent vs. 2022 leases", "Angebotsmiete ggü. Bestand 2022")} value={`+${num(h.medianPremium)}`} unit="%"
+              say={t(<>Median asking rent today against the average rent of existing contracts in May 2022, typical city. Not a like-for-like price change.</>,
+                <>Mittlere Angebotsmiete heute gegenüber der Durchschnittsmiete laufender Verträge im Mai 2022, typische Stadt. Kein Preisvergleich derselben Wohnung.</>)} />
             <Stat label={t("Mortgage rate", "Bauzins")} value={num(rate.rate_pct, 2)} unit="%"
               say={jump ? t(<>Up from {num(jump.before, 2)}% at the start of 2022, so more people keep renting.<Cite id="bundesbank2024" /></>,
                 <>Anfang 2022 waren es {num(jump.before, 2)} %, deshalb bleiben mehr Menschen Mieter.<Cite id="bundesbank2024" /></>)
@@ -174,13 +185,21 @@ export function StoryView({ lang }: { lang: Lang }) {
             <h2 className="reveal">{t("Moving costs more than staying", "Umziehen kostet mehr als Bleiben")}</h2>
             <div className="prose reveal" style={{ marginTop: 16 }}>
               {t(<>
-                <p>The 2022 census recorded what people actually paid on their existing leases: the <Term k="contract-rent" />. Compared with
-                  today&apos;s asking rent, a newcomer in the typical city pays a <Term k="premium">premium</Term> of <strong>{num(h.medianPremium)}%</strong>.</p>
+                <p>The 2022 census recorded what people actually paid on their existing leases: the <Term k="contract-rent" />. Today&apos;s
+                  median asking rent in the typical city is <strong>{num(h.medianPremium)}%</strong> above that average, the{" "}
+                  <Term k="premium">gap between new and existing rents</Term>.</p>
+                <p>This is not the price change of one flat. It compares the median of flats advertised in {monthLong(lastMonth)} with the
+                  mean of all existing contracts in May 2022, so it mixes four years of rent growth, a different mix of flats, and long-running
+                  leases that were never raised to market level.</p>
                 <p>In {nm(prem[0])} the gap reaches {num(prem[0].premium)}%: a flat an existing tenant rents for {eur(prem[0].existing)} per m² is
                   advertised at {eur(prem[0].asking)} to someone new. This gap is one reason many people stay in flats that no longer fit them.<Cite id={["iw2026", "gohl2019"]} /></p>
               </>, <>
-                <p>Der Zensus 2022 hat erfasst, was Haushalte in ihren laufenden Verträgen tatsächlich zahlten: die <Term k="contract-rent" />. Verglichen mit
-                  der heutigen Angebotsmiete zahlt jemand Neues in der typischen Stadt einen <Term k="premium">Aufschlag</Term> von <strong>{num(h.medianPremium)} %</strong>.</p>
+                <p>Der Zensus 2022 hat erfasst, was Haushalte in ihren laufenden Verträgen tatsächlich zahlten: die <Term k="contract-rent" />. Die heutige
+                  mittlere Angebotsmiete liegt in der typischen Stadt <strong>{num(h.medianPremium)} %</strong> über diesem Durchschnitt, die{" "}
+                  <Term k="premium">Lücke zwischen neuen und bestehenden Mieten</Term>.</p>
+                <p>Das ist nicht die Preisänderung einer Wohnung. Verglichen wird der Median der im {monthLong(lastMonth)} inserierten Wohnungen mit dem
+                  Mittelwert aller laufenden Verträge im Mai 2022. Darin stecken vier Jahre Mietanstieg, eine andere Mischung von Wohnungen und
+                  langjährige Verträge, die nie auf Marktniveau angehoben wurden.</p>
                 <p>In {nm(prem[0])} erreicht die Lücke {num(prem[0].premium)} %: Eine Wohnung, die Bestandsmieter für {eur(prem[0].existing)} pro m² mieten, wird
                   Neuen für {eur(prem[0].asking)} angeboten. Diese Lücke ist ein Grund, warum viele in Wohnungen bleiben, die nicht mehr zu ihnen passen.<Cite id={["iw2026", "gohl2019"]} /></p>
               </>)}
@@ -215,19 +234,22 @@ export function StoryView({ lang }: { lang: Lang }) {
 
       <section className="section" id="outlook">
         <div className="wrap split flip">
-          <Figure title={t("Expected change in asking rent over the next 12 months", "Erwartete Veränderung der Angebotsmiete in den nächsten 12 Monaten")}
-            sub={t("Dot: most likely change. Bar: the range the model considers 80% likely.", "Punkt: wahrscheinlichste Veränderung. Balken: die Spanne, die das Modell zu 80 % für wahrscheinlich hält.")}
+          <Figure title={t(`Expected change in asking rent by ${monthLong(target12)}`, `Erwartete Veränderung der Angebotsmiete bis ${monthLong(target12)}`)}
+            sub={t(`Forecast made from data up to ${monthLong(origin)}. Dot: most likely change. Bar: the range the model considers 80% likely. ↯ marks a forecast that points against the city's own last 12 months.`,
+              `Prognose aus Daten bis ${monthLong(origin)}. Punkt: wahrscheinlichste Veränderung. Balken: die Spanne, die das Modell zu 80 % für wahrscheinlich hält. ↯ markiert eine Prognose, die gegen den Trend der letzten 12 Monate der Stadt zeigt.`)}
             source={<>{t("ImmoDash forecast: LightGBM quantile regression on the GREIX index, conformal-calibrated.", "ImmoDash-Prognose: LightGBM-Quantilsregression auf dem GREIX-Index, konform kalibriert.")}<Cite id={["ke2017", "koenker1978", "romano2019"]} /></>}
             howto={t(<>
               <p>Read each row as &ldquo;most likely about this much, but anywhere along the bar would not be a surprise&rdquo;. A wide bar means the
                 city&apos;s rents have been jumpy and the model is less sure.</p>
               <p>The forecast only knows past rents and their momentum. It cannot anticipate new laws, a sudden wave of new construction
-                or a recession. <Link href={to("/methodology")}>How the model works and how it was tested</Link>.</p>
+                or a recession. Between 2012 and 2026 rents fell over a year only rarely ({falls12} of {n12} test cases), so the model has
+                little evidence for a fall and seldom predicts one. <Link href={to("/methodology")}>How the model works and how it was tested</Link>.</p>
             </>, <>
               <p>Lesen Sie jede Zeile als „am wahrscheinlichsten etwa so viel, aber alles entlang des Balkens wäre keine Überraschung“. Ein breiter
                 Balken heißt, die Mieten der Stadt schwankten stark und das Modell ist unsicherer.</p>
               <p>Die Prognose kennt nur vergangene Mieten und ihre Dynamik. Neue Gesetze, eine plötzliche Neubauwelle oder eine Rezession
-                kann sie nicht vorhersehen. <Link href={to("/methodology")}>Wie das Modell funktioniert und wie es getestet wurde</Link>.</p>
+                kann sie nicht vorhersehen. Zwischen 2012 und 2026 fielen die Mieten nur selten über ein Jahr ({falls12} von {n12} Testfällen), daher hat
+                das Modell wenig Belege für einen Rückgang und sagt selten einen voraus. <Link href={to("/methodology")}>Wie das Modell funktioniert und wie es getestet wurde</Link>.</p>
             </>)}
             numbers={<table><thead><tr><th>{t("City", "Stadt")}</th><th className="num">{t("Now", "Jetzt")}</th><th className="num">{t("Low", "Niedrig")}</th><th className="num">{t("Most likely", "Am wahrscheinlichsten")}</th><th className="num">{t("High", "Hoch")}</th></tr></thead>
               <tbody>{out.map((r) => <tr key={r.city}><td>{nm(r)}</td><td className="num">{eur(r.now)}</td><td className="num">{eur(r.p10)}</td><td className="num">{eur(r.p50)}</td><td className="num">{eur(r.p90)}</td></tr>)}</tbody></table>}>
@@ -252,6 +274,8 @@ export function StoryView({ lang }: { lang: Lang }) {
               {t(<>Expect next year&apos;s rent to be a little higher than today&apos;s almost everywhere. Where the bar is wide, keep a bigger buffer.</>,
                 <>Rechnen Sie fast überall damit, dass die Miete nächstes Jahr etwas höher ist als heute. Wo der Balken breit ist, planen Sie mehr Puffer ein.</>)}
             </Takeaway>
+            <p className="disclaimer">{t(`Model estimate as of ${f.day(meta.generated_at)}, not financial advice.`,
+              `Modellschätzung, Stand ${f.day(meta.generated_at)}, keine Finanzberatung.`)}</p>
           </div>
         </div>
       </section>

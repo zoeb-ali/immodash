@@ -27,7 +27,7 @@ export function Figure({ title, sub, children, source, howto, numbers, controls,
       {numbers && (
         <details className="numbers">
           <summary><T en="Show the numbers" de="Zahlen anzeigen" /></summary>
-          <div className="tablewrap" style={{ maxHeight: 420, overflowY: "auto", marginTop: 8 }}>{numbers}</div>
+          <div className="tablewrap" tabIndex={0} style={{ maxHeight: 420, overflowY: "auto", marginTop: 8 }}>{numbers}</div>
         </details>
       )}
     </figure>

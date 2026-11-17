@@ -14,19 +14,23 @@ DEFAULT_WAREHOUSE_URL = f"duckdb:///{PROJECT_ROOT / 'warehouse' / 'immodash.duck
 def warehouse_url() -> str:
     return _normalise(os.getenv("WAREHOUSE_URL") or os.getenv("DATABASE_URL") or DEFAULT_WAREHOUSE_URL)
 
+
 def _normalise(url: str) -> str:
     """Accept postgres://... / postgresql://... (Railway, Render, Neon) and use the psycopg 3 driver."""
     for prefix in ("postgres://", "postgresql://"):
         if url.startswith(prefix):
-            return "postgresql+psycopg://" + url[len(prefix):]
+            return "postgresql+psycopg://" + url[len(prefix) :]
     return url
-
 
 
 @dataclass(frozen=True)
 class Source:
     """A public dataset. `url` is the canonical download location; `filename` is the
-    local copy under data/raw/<folder>/ that the parser reads."""
+    local copy under data/raw/<folder>/ that the parser reads.
+
+    `sha256` pins a file that must never change (a fixed release): a download with another checksum is
+    rejected. `licence_url` links the licence text. `release_note` says how and when a new edition appears,
+    which the runbook repeats and scripts/check_editions.py watches."""
 
     key: str
     folder: str
@@ -34,6 +38,9 @@ class Source:
     url: str | None
     licence: str
     publisher: str
+    licence_url: str | None = None
+    sha256: str | None = None
+    release_note: str = ""
 
 
 SOURCES: dict[str, Source] = {
@@ -46,6 +53,8 @@ SOURCES: dict[str, Source] = {
             url=None,  # fetched through the Zensus database API (token) or exported manually
             licence="Datenlizenz Deutschland - Namensnennung - Version 2.0",
             publisher="Statistische Ämter des Bundes und der Länder, Zensus 2022 (table 4000W-0011)",
+            licence_url="https://www.govdata.de/dl-de/by-2-0",
+            release_note="Census of May 2022; final results published 2024. No new edition until the next census.",
         ),
         Source(
             key="zensus_vacancy",
@@ -54,6 +63,8 @@ SOURCES: dict[str, Source] = {
             url=None,
             licence="Datenlizenz Deutschland - Namensnennung - Version 2.0",
             publisher="Statistische Ämter des Bundes und der Länder, Zensus 2022 (table 4000W-0002)",
+            licence_url="https://www.govdata.de/dl-de/by-2-0",
+            release_note="Census of May 2022; static.",
         ),
         Source(
             key="zensus_rent_by_size",
@@ -62,6 +73,8 @@ SOURCES: dict[str, Source] = {
             url=None,
             licence="Datenlizenz Deutschland - Namensnennung - Version 2.0",
             publisher="Statistische Ämter des Bundes und der Länder, Zensus 2022 (table 4000W-0009)",
+            licence_url="https://www.govdata.de/dl-de/by-2-0",
+            release_note="Census of May 2022; static.",
         ),
         Source(
             key="zensus_bezirke_rent",
@@ -70,14 +83,22 @@ SOURCES: dict[str, Source] = {
             url=None,
             licence="Datenlizenz Deutschland - Namensnennung - Version 2.0",
             publisher="Statistische Ämter des Bundes und der Länder, Zensus 2022 (table 4000W-0004, Bezirke)",
+            licence_url="https://www.govdata.de/dl-de/by-2-0",
+            release_note="Census of May 2022; static.",
         ),
         Source(
             key="osm_postcodes",
             folder="osm_postcodes",
             filename="postleitzahlen_city_kreise.geojson",
-            url=None,  # subset of github.com/yetzt/postleitzahlen (release 2026.02), made by scripts/prepare_postcodes.py
+            # subset of github.com/yetzt/postleitzahlen (release 2026.02), made by scripts/prepare_postcodes.py
+            url=None,
             licence="ODbL 1.0 (© OpenStreetMap contributors); the derived postcode rent table is shared under ODbL",
             publisher="OpenStreetMap postcode boundaries via yetzt/postleitzahlen (release 2026.02)",
+            licence_url="https://opendatacommons.org/licenses/odbl/1-0/",
+            release_note=(
+                "yetzt/postleitzahlen publishes a release a few times a year; rebuild with "
+                "scripts/prepare_postcodes.py."
+            ),
         ),
         Source(
             key="zensus_grid_rent",
@@ -86,6 +107,8 @@ SOURCES: dict[str, Source] = {
             url="https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Durchschn_Nettokaltmiete.zip",
             licence="Datenlizenz Deutschland - Namensnennung - Version 2.0",
             publisher="Statistische Ämter des Bundes und der Länder, Zensus 2022 Gitterzellen (100 m / 1 km)",
+            licence_url="https://www.govdata.de/dl-de/by-2-0",
+            release_note="Census of May 2022 grid; static.",
         ),
         Source(
             key="vgrdl_income",
@@ -94,6 +117,11 @@ SOURCES: dict[str, Source] = {
             url="https://www.statistikportal.de/sites/default/files/2026-01/vgrdl_r2b3_bs2024.xlsx",
             licence="Datenlizenz Deutschland - Namensnennung - Version 2.0",
             publisher="Arbeitskreis VGR der Länder, Reihe 2 Band 3 (Berechnungsstand 2024)",
+            licence_url="https://www.govdata.de/dl-de/by-2-0",
+            release_note=(
+                "New Berechnungsstand each summer under a new URL (statistikportal.de); "
+                "scripts/check_editions.py looks for it."
+            ),
         ),
         Source(
             key="greix_rents",
@@ -103,8 +131,13 @@ SOURCES: dict[str, Source] = {
                 "https://www.kielinstitut.de/fileadmin/Dateiverwaltung/IfW_Unit/Macroeconomics/"
                 "GREIX/Mietpreisindex/City_metrics_public.xlsx"
             ),
-            licence="Free use with attribution (GREIX, Kiel Institut / VALUE Marktdaten)",
+            licence=(
+                "Published free of charge by the Kiel Institute with attribution requested; redistribution "
+                "terms not confirmed"
+            ),
             publisher="GREIX Mietpreisindex, Kiel Institut für Weltwirtschaft",
+            licence_url="https://www.kielinstitut.de/de/forschung/forschungszentren/makrooekonomie/greix/",
+            release_note="Quarterly, roughly 6 to 10 weeks after the quarter ends, same URL.",
         ),
         Source(
             key="greix_rent_vs_sales",
@@ -114,8 +147,13 @@ SOURCES: dict[str, Source] = {
                 "https://www.kielinstitut.de/fileadmin/Dateiverwaltung/IfW_Unit/Macroeconomics/"
                 "GREIX/Mietpreisindex/City_Metrics_rents_sales-Mietpreis-Transaktionspreisindex.xlsx"
             ),
-            licence="Free use with attribution (GREIX, Kiel Institut)",
+            licence=(
+                "Published free of charge by the Kiel Institute with attribution requested; redistribution "
+                "terms not confirmed"
+            ),
             publisher="GREIX Miet- und Transaktionspreisindex, Kiel Institut für Weltwirtschaft",
+            licence_url="https://www.kielinstitut.de/de/forschung/forschungszentren/makrooekonomie/greix/",
+            release_note="Quarterly, same URL.",
         ),
         Source(
             key="bundesbank_mortgage_rate",
@@ -127,17 +165,26 @@ SOURCES: dict[str, Source] = {
             ),
             licence="Deutsche Bundesbank, free use with attribution",
             publisher="Deutsche Bundesbank, MFI interest rate statistics (SUD131Z)",
+            licence_url="https://www.bundesbank.de/en/statistics/time-series-databases/help-for-sdmx-web-service/terms-of-use",
+            release_note="Monthly, about five weeks after the month ends.",
         ),
         Source(
             key="geo_kreise",
             folder="geo",
             filename="kreise_vg5000.geojson",
+            # Pinned to a commit and a checksum (SEC-3): a third-party repo must not be able to change production data.
             url=(
-                "https://raw.githubusercontent.com/Praesklepios/geoGermany/main/geojson/"
-                "Ebene_Kreise.geojson"
+                "https://raw.githubusercontent.com/Praesklepios/geoGermany/"
+                "f3aa3a59290aea47cdcb2f15aa3cb427eb28b1cd/geojson/Ebene_Kreise.geojson"
             ),
             licence="© GeoBasis-DE / BKG (VG5000, Stand 01.01.2021), dl-de/by-2-0",
             publisher="Bundesamt für Kartographie und Geodäsie via Praesklepios/geoGermany",
+            licence_url="https://www.govdata.de/dl-de/by-2-0",
+            sha256="9b00382dbe31ddb10b9ce5847ec6b5eeb844550787d97ae951191566079b1cf7",
+            release_note=(
+                "Fixed 2021 vintage (401 polygons incl. Eisenach). Moving to BKG VG5000 2024 is tracked "
+                "in docs/RUNBOOK.md."
+            ),
         ),
     ]
 }

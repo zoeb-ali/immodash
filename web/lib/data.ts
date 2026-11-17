@@ -3,8 +3,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type {
-  Anomaly, Backtest, Bezirk, CitySnapshot, Forecast, KreisAffordability, KreisAskingRent, KreisGeo,
-  KreisSupplyDemand, MortgageRate, PressurePoint, RentPoint, Source, Summary,
+  Anomaly, Backtest, BacktestCity, Bezirk, CitySnapshot, EstimateValidation, Forecast, Freshness, KreisAffordability,
+  KreisAskingRent, KreisGeo, KreisSupplyDemand, MortgageRate, PressurePoint, RentPoint, Source, Summary,
 } from "./types";
 
 const DIR = join(process.cwd(), "public", "data");
@@ -32,7 +32,10 @@ export type CitySD = {
   supply_demand_index: number | null; market_balance: string | null; time_on_market_days_4q: number | null;
   demand_pressure_score: number | null;
 };
-export type Meta = { generated_at: string; latest_month: string; files: number; bytes: number; summaries_by_llm: number };
+export type Meta = {
+  generated_at: string; latest_month: string; forecast_origin: string; data_tests: number | null; version: string;
+  files: number; bytes: number; summaries_by_llm: number;
+};
 
 export const data = {
   meta: () => read<Meta>("meta.json"),
@@ -40,6 +43,9 @@ export const data = {
   monthly: () => read<RentPoint[]>("monthly.json"),
   forecasts: () => read<Forecast[]>("forecasts.json"),
   backtest: () => read<Backtest[]>("backtest.json"),
+  backtestCities: () => read<BacktestCity[]>("backtest-cities.json"),
+  freshness: () => read<Freshness[]>("freshness.json"),
+  estimateValidation: () => read<EstimateValidation[]>("estimate-validation.json"),
   anomalies: () => read<Anomaly[]>("anomalies.json"),
   pressure: () => read<PressurePoint[]>("market-pressure.json"),
   rates: () => read<MortgageRate[]>("mortgage-rates.json"),

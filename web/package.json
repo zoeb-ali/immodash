@@ -1,12 +1,15 @@
 {
   "name": "immodash-web",
-  "version": "0.3.0",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/postbuild.mjs",
     "start": "next start",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit && eslint .",
+    "test:e2e": "playwright test",
+    "lhci": "lhci autorun && lhci autorun --config=lighthouserc.mobile.json",
+    "serve": "node scripts/serve-out.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -20,12 +23,18 @@
     "recharts": "3.10.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.63.0",
     "@types/d3-geo": "^3.1.0",
     "@types/d3-scale": "^4.0.8",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.8",
+    "playwright-core": "^1.63.0",
     "typescript": "^5.7.0"
   }
 }

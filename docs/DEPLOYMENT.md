@@ -26,7 +26,8 @@ calls every endpoint through the real FastAPI app and writes the responses as fi
 
 ## 1. Push the repo
 
-From your terminal (see `docs/PUSH_TO_GITHUB.md`). The repo already contains a current snapshot in
+From your own terminal: commit, then `git pull --rebase` (the weekly bot commits data), then `git push`
+(details in [CONTRIBUTING.md](../CONTRIBUTING.md)). The repo already contains a current snapshot in
 `web/public/data/`, so the site can be built straight away.
 
 ## 2. Vercel

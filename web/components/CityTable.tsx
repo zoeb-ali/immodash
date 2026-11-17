@@ -16,7 +16,7 @@ const COLS: { key: Key; label: [string, string]; hint: [string, string] }[] = [
   { key: "median", label: ["Asking rent", "Angebotsmiete"], hint: ["Median asking rent per m², latest month", "Mittlere Angebotsmiete pro m², letzter Monat"] },
   { key: "yoy", label: ["1 year", "1 Jahr"], hint: ["Change over the last 12 months", "Veränderung in den letzten 12 Monaten"] },
   { key: "y5", label: ["5 years", "5 Jahre"], hint: ["Change over five years", "Veränderung in fünf Jahren"] },
-  { key: "burden", label: ["Rent burden", "Mietbelastung"], hint: ["60 m² flat as a share of two residents' net income", "60-m²-Wohnung als Anteil am Nettoeinkommen zweier Einwohner"] },
+  { key: "burden", label: ["Rent burden", "Mietbelastung"], hint: ["Rent burden at today's asking rent: 60 m² as a share of two residents' net income (income 2023)", "Mietbelastung zur heutigen Angebotsmiete: 60 m² als Anteil am Nettoeinkommen zweier Einwohner (Einkommen 2023)"] },
   { key: "dom", label: ["Days online", "Tage online"], hint: ["How long listings stay online", "Wie lange Inserate online bleiben"] },
   { key: "f12", label: ["Next 12 m", "Nächste 12 M."], hint: ["Most likely change, model forecast", "Wahrscheinlichste Veränderung, Modellprognose"] },
 ];

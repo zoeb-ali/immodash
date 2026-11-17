@@ -5,6 +5,8 @@
 --   2. otherwise                                      -> median premium of GREIX cities in the same Land
 --   3. Land without GREIX coverage                    -> national median premium
 -- The method column makes the provenance of every estimate explicit.
+-- Modelled estimates (methods 2 and 3) also get a range: ± the 80th percentile of the absolute error that the
+-- same rule makes on the GREIX cities in a leave-one-out test (gold.fct_asking_estimate_validation, ML-2).
 with premium_city as (
     select ags, max(asking_premium_vs_existing_pct) / 100.0 as premium
     from {{ ref('fct_city_snapshot') }}
@@ -22,6 +24,10 @@ premium_national as (
 ),
 r as (
     select * from {{ ref('fct_kreis_rent_by_rooms') }}
+),
+err as (
+    select percentile_cont(0.8) within group (order by abs(error_pct)) / 100.0 as band
+    from {{ ref('fct_asking_estimate_validation') }}
 )
 select
     r.ags,
@@ -36,8 +42,14 @@ select
         when pc.premium is not null then 'greix_city'
         when pl.premium is not null then 'greix_land_median'
         else 'greix_national_median'
-    end                                                                   as estimate_method
+    end                                                                   as estimate_method,
+    pc.premium is null                                                    as is_modelled,
+    case when pc.premium is null then round(cast(r.rent_eur_sqm * (1 + coalesce(pl.premium, pn.premium)) * (1 - err.band) as numeric), 2) end
+                                                                          as estimate_low_eur_sqm,
+    case when pc.premium is null then round(cast(r.rent_eur_sqm * (1 + coalesce(pl.premium, pn.premium)) * (1 + err.band) as numeric), 2) end
+                                                                          as estimate_high_eur_sqm
 from r
 cross join premium_national pn
+cross join err
 left join premium_city pc on pc.ags = r.ags
 left join premium_land pl on pl.land_code = left(r.ags, 2)

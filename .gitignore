@@ -16,3 +16,23 @@ dbt/.user.yml
 
 # private notes, kept on this Mac only (handoff, old planning docs, helper scripts)
 .private/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+web/test-results/
+web/playwright-report/
+web/.lighthouseci/
+
+# generated, not source (OPS-6): CI uploads the verification report as an artifact
+reports/*.html
+reports/*.json
+
+# third-party design skills used while building the site (OPS-6); not part of the project
+.agents/
+
+# local editable install
+*.egg-info/
+
+# DE-8: the Zensus tables are read from the .csv; the .zip copies were duplicates
+data/raw/zensus/*.zip

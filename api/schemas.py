@@ -96,6 +96,11 @@ class KreisAskingRent(_Model):
     estimated_asking_rent_eur_sqm: float
     asking_premium: float
     estimate_method: str
+    is_modelled: bool = Field(description="True when the district has no listing data and the value is modelled")
+    estimate_low_eur_sqm: float | None = Field(
+        None, description="Lower end of the modelled range (validation error band)"
+    )
+    estimate_high_eur_sqm: float | None = Field(None, description="Upper end of the modelled range")
 
 
 class MortgageRatePoint(_Model):
@@ -123,6 +128,29 @@ class SourceInfo(_Model):
     publisher: str
     licence: str
     url: str | None
+    licence_url: str | None = None
+    release_note: str = ""
+
+
+class SourceFreshness(_Model):
+    source_key: str
+    dataset: str
+    data_through: date = Field(description="Newest period contained in the source")
+    cadence: str
+    warn_after_days: int | None
+    error_after_days: int | None
+    age_days: int
+    is_late: bool
+    is_stale: bool
+
+
+class EstimateValidation(_Model):
+    city: str
+    ags: str
+    method: str
+    actual_asking_rent_eur_sqm: float
+    estimated_asking_rent_eur_sqm: float
+    error_pct: float
 
 
 # ---------------------------------------------------------------- Phase 2
@@ -237,6 +265,9 @@ class RentForecast(_Model):
     p50_rent_sqm: float
     p90_rent_sqm: float
     change_p50_pct: float
+    base_method: str = Field(description="What median_rent_now is: a 3-month average of the median asking rent")
+    index_change_12m_pct: float | None = Field(description="Change of the hedonic index over the last 12 months")
+    disagrees_with_trend: bool = Field(description="Forecast direction differs from the last 12 months' trend")
     model_version: str
 
 
@@ -244,10 +275,29 @@ class BacktestRow(_Model):
     horizon_months: int
     model: str
     mape_pct: float
+    bias_pct: float = Field(description="Mean signed error; positive = forecasts were too high")
     mae_eur_sqm: float
+    direction_accuracy_pct: float = Field(description="Share of forecasts that got rise vs. fall right")
     coverage_80_pct: float | None
     n_forecasts: int
     n_origins: int
+    n_falls: int = Field(description="How many of the real outcomes were falls of more than 0.5 %")
+    first_origin: date
+    last_origin: date
+
+
+class BacktestCityRow(_Model):
+    city: str
+    horizon_months: int
+    model: str
+    mape_pct: float
+    bias_pct: float
+    mae_eur_sqm: float
+    direction_accuracy_pct: float
+    coverage_80_pct: float | None
+    n_forecasts: int
+    n_origins: int
+    n_falls: int
 
 
 class RentAnomaly(_Model):
@@ -262,12 +312,16 @@ class RentAnomaly(_Model):
     is_anomaly: bool
     direction: str
     severity: str
+    persistence: str = Field(description="persisted | reversed | pending (next month not yet known)")
+    signal: str = Field(description="Series the move was measured on")
 
 
 class MarketSummary(_Model):
     city: str
     text: str
+    text_de: str = Field(description="German template summary (the LLM text is English only)")
     generated_by: str
+    facts_hash: str = Field(description="Hash of the facts; the text is regenerated only when it changes")
     grounding_rejected_numbers: list[str]
     generated_at: datetime
     facts: dict

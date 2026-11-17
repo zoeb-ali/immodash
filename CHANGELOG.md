@@ -7,7 +7,59 @@ PATCH for fixes. The weekly `data: weekly refresh` commits by the bot change dat
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-12
+
+Fixes from the November 2026 engineering audit (`Audit report/immodash-audit-2026-11.md` has the finding-by-finding log).
+
 ### Added
+- Data freshness: `gold.fct_source_freshness` with one row per source (last period, age, status ok / late / stale),
+  dbt tests `assert_sources_not_stale` (error) and `assert_sources_not_late` (warn), API `/meta/freshness`,
+  site file `freshness.json` and a "Data through" column in the Methodology sources table.
+- Ingestion health: every download is size-capped, rejects HTML error pages, records its sha256 and Last-Modified;
+  a run log and bronze row counts in `data/history/`; the refresh fails after 3 fallback runs in a row or a row drop
+  above 20 %. Each bronze table is checked against a declared schema (`immodash_ingest/schemas.py`) before loading.
+- Volume tests on 8 marts (`row_count_between`), dbt exposures for the website and the API.
+- Leave-one-out validation of the district asking-rent estimate (`fct_asking_estimate_validation`, API
+  `/validation/asking-estimate`): median error 6.1 %, 80 % of districts within 10.4 %. Modelled districts carry a
+  range and are marked on the map and in the finder.
+- Forecast backtest over every quarter since July 2015 (38 origins) with bias, direction accuracy and the number of
+  falls, per city too (`ml.forecast_backtest_city`, `/forecasts/backtest/cities`).
+- Forecast and model-card history (`data/history/forecasts.csv`, `model_cards.csv`) written by the weekly refresh.
+- German city summaries (`text_de`), a facts hash so unchanged summaries are reused, and a stricter grounding check
+  (every number must be a fact; rank wording and direction checked).
+- API: versioned routes under `/v1`, Cache-Control headers, validated path and query parameters.
+- Snapshot validator (`scripts/validate_snapshot.py`) gating every publish; `check_versions.py`, `check_links.py`,
+  `check_editions.py`; a daily `monitor` workflow (live site, data age, new source editions).
+- Web: ESLint, Playwright end-to-end and accessibility tests (axe) on desktop and mobile, Lighthouse CI budgets,
+  `sitemap.xml`, `robots.txt`, security headers and a per-page Content-Security-Policy with script hashes.
+- 39 unit tests (`tests/unit/`), coverage gate at 80 %, pre-commit hooks, Dependabot, `SECURITY.md`,
+  ADRs 0010 (one product: website; Dash stays local) and 0011 (forecast and estimate honesty).
+
+### Changed
+- Python dependencies are locked with hashes (`requirements*.lock`), the project is an installable package and
+  the `sys.path` hacks are gone. GitHub Actions are pinned to commit SHAs with read-only default permissions.
+- The weekly refresh is split into a read-only build job and a publish job that only commits checked output.
+- Postgres loads are atomic (staging table, swap in one transaction). No default database passwords.
+- Forecast model `lgbm-quantile-v2`: fixed seed, deterministic training, city code removed from the features.
+  Forecasts state their target month, base and whether they disagree with the city's trend.
+- Anomalies are detected on the rent index with a persistence check (91 flags became 52).
+- Rent burden is called "asking-rent burden" with its caveats; the 2022 census figure is labelled separately.
+  The premium stat reads "Asking rent vs. 2022 leases". Reference rents are rounded to 10 €.
+- Home page HTML 808 KB to 356 KB: the hero map is served as two theme SVGs and the interactive paths load on hover.
+- District map uses 5 rent classes with a stepped legend and a keyboard-accessible table.
+- Docker image is multi-stage with api, dashboard and pipeline targets; compose binds ports to localhost.
+- Code formatted with `ruff format`, line length 120; mypy clean.
+
+### Fixed
+- The rent-check meter placed its labels at the wrong positions.
+- The street map showed nothing if tiles failed; it now falls back after 8 seconds with a note.
+- `docs/DEPLOYMENT.md` pointed to a missing file.
+
+### Removed
+- The misleading dbt source freshness block (replaced by the freshness mart).
+- The `llm` query parameter on the summary endpoint.
+
+### Added (site)
 - About page: the 50-second pitch film (`web/public/video/immodash-pitch.mp4`, 1600 px H.264, 5.9 MB) in a section
   before "Growing up in Mumbai", shown as a poster with a play button; the video loads only on play (`PitchVideo.tsx`).
 - About page hero: Berlin's Zensus 100 m rent grid as a background picture behind the title, one version per theme,
@@ -15,14 +67,14 @@ PATCH for fixes. The weekly `data: weekly refresh` commits by the bot change dat
 - German version of the whole site under `/de` (all pages, charts, tooltips, glossary, references), with an EN | DE
   switch in the header that opens the same page in the other language. German pages use German number formats
   (1.050,00 €, 3,5 %), German city names and `lang="de"`; every page links its counterpart with `hreflang`.
-  A visitor who picked German before lands on `/de` when opening the home page. City summaries written by the AI
-  stay English for now and are labelled as such. See ADR 0009.
+  A visitor who picked German before lands on `/de` when opening the home page. City summaries have a German
+  version built from the same facts (see Added above). See ADR 0009.
 - Project documentation set following `~/Projects/_standards/PROJECT_DOCS_STANDARD.md`: this changelog,
   `CONTRIBUTING.md`, `docs/RUNBOOK.md`, `docs/README.md` (documentation index), ADR template and ADRs 0007 (postcode estimates and rent ranges) and 0008 (street map).
 - Data dictionary generated from the warehouse: `docs/DATA_DICTIONARY.md`, with column definitions in
   `docs/codebook/columns.yml`, the generator `scripts/gen_data_dictionary.py`, and `make docs` / `make docs-check`.
 
-### Changed
+### Changed (site)
 - Pages are rendered by language-aware views in `web/views/`; `web/app/*` and `web/app/de/*` are thin route files.
   Shared helpers: `web/lib/i18n.ts`, `web/lib/useLang.ts`, `fmt(lang)` in `web/lib/format.ts`, `pageMeta` in `web/lib/meta.ts`.
 - The inline navigation starts at 1081 px (was 921 px) to make room for the language switch and the longer German labels.
@@ -120,7 +172,8 @@ PATCH for fixes. The weekly `data: weekly refresh` commits by the bot change dat
 - Grounded LLM city summaries; Prefect flow; Docker Compose; CI on GitHub Actions.
 - Weekly `refresh-site` workflow that rebuilds the data and redeploys the site on Vercel.
 
-[Unreleased]: https://github.com/zoeb-ali/immodash/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/zoeb-ali/immodash/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/zoeb-ali/immodash/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/zoeb-ali/immodash/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/zoeb-ali/immodash/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/zoeb-ali/immodash/compare/v1.2.0...v1.3.0

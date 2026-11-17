@@ -40,6 +40,7 @@ export function outlookRows() {
   return data.cities().filter((c) => f12[c.city]).map((c) => ({
     city: c.city, city_en: c.city_en, slug: c.slug, population: c.population, now: f12[c.city].median_rent_now,
     p10: f12[c.city].p10_rent_sqm, p50: f12[c.city].p50_rent_sqm, p90: f12[c.city].p90_rent_sqm,
+    disagree: f12[c.city].disagrees_with_trend,
   }));
 }
 

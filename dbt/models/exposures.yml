@@ -1,0 +1,45 @@
+version: 2
+
+# DE-10: what reads the gold and ml layers. `dbt ls --select +exposure:website` lists every model the site needs.
+exposures:
+  - name: website
+    label: ImmoDash website (static export)
+    type: application
+    maturity: high
+    url: https://immodash-virid.vercel.app
+    description: >
+      The public site. scripts/export_static.py calls the FastAPI app in process and writes web/public/data;
+      the site is built from those files every week.
+    depends_on:
+      - ref('fct_city_snapshot')
+      - ref('fct_city_rent_monthly')
+      - ref('fct_city_market_pressure')
+      - ref('fct_mortgage_rates')
+      - ref('fct_kreis_affordability')
+      - ref('fct_kreis_supply_demand')
+      - ref('fct_city_supply_demand')
+      - ref('fct_kreis_asking_rent_estimate')
+      - ref('fct_kreis_rent_by_size')
+      - ref('fct_bezirk_rent')
+      - ref('fct_kreis_rent_range')
+      - ref('fct_postcode_rent')
+      - ref('fct_grid_rent_cells')
+      - ref('fct_source_freshness')
+      - ref('fct_asking_estimate_validation')
+    owner:
+      name: Zoeb Ali Khan
+      email: noreply@github.com
+
+  - name: api
+    label: ImmoDash read API (FastAPI, /v1)
+    type: application
+    maturity: medium
+    description: Typed read API over gold and ml; run locally or self-hosted, the source of the static export.
+    depends_on:
+      - ref('dim_kreis')
+      - ref('fct_kreis_rent_by_rooms')
+      - ref('fct_kreis_neighbourhood_spread')
+      - ref('fct_city_snapshot')
+    owner:
+      name: Zoeb Ali Khan
+      email: noreply@github.com

@@ -40,6 +40,11 @@ models:
   - name: affordability_index
     data_tests:
     - not_null
+  data_tests:
+  - row_count_between:
+      arguments:
+        min_rows: 400
+        max_rows: 400
 - name: fct_city_rent_monthly
   description: Monthly asking rents per city with MoM / YoY / 5-year momentum.
   columns:
@@ -59,6 +64,10 @@ models:
   - unique:
       arguments:
         column_name: city || '-' || cast(period_date as varchar)
+  - row_count_between:
+      arguments:
+        min_rows: 6000
+        max_rows: 9000
 - name: fct_city_market_pressure
   description: Quarterly time-on-market, quick-let share and a composite demand pressure score.
 - name: fct_mortgage_rates
@@ -82,6 +91,11 @@ models:
         arguments:
           min_value: 5
           max_value: 60
+  data_tests:
+  - row_count_between:
+      arguments:
+        min_rows: 37
+        max_rows: 37
 - name: fct_kreis_asking_rent_estimate
   description: Estimated current asking rent per Kreis and rooms (Zensus 2022 uplifted by GREIX asking premia).
   columns:
@@ -100,6 +114,11 @@ models:
           - greix_city
           - greix_land_median
           - greix_national_median
+  data_tests:
+  - row_count_between:
+      arguments:
+        min_rows: 3000
+        max_rows: 3300
 - name: fct_kreis_rent_by_size
   description: Zensus 2022 rent per m² by Kreis and floor-area band with estimated asking rent.
   columns:
@@ -120,7 +139,10 @@ models:
     data_tests:
     - accepted_values:
         arguments:
-          values: [tight, balanced, slack]
+          values:
+          - tight
+          - balanced
+          - slack
   - name: population_growth_5y_pct
     data_tests:
     - not_null
@@ -128,6 +150,11 @@ models:
         arguments:
           min_value: -20
           max_value: 30
+  data_tests:
+  - row_count_between:
+      arguments:
+        min_rows: 400
+        max_rows: 400
 - name: fct_city_supply_demand
   description: City-level supply/demand combining Kreis structure and GREIX listing dynamics.
   columns:
@@ -144,6 +171,11 @@ models:
     - not_null
 - name: fct_grid_rent_cells
   description: Zensus grid cells (100 m in city Kreise, 1 km everywhere) with index vs Kreis median.
+  data_tests:
+  - row_count_between:
+      arguments:
+        min_rows: 350000
+        max_rows: 420000
 - name: fct_bezirk_rent
   description: Berlin and Hamburg Bezirke rents vs city average.
   columns:
@@ -174,6 +206,10 @@ models:
   - unique:
       arguments:
         column_name: ags || '-' || plz
+  - row_count_between:
+      arguments:
+        min_rows: 1000
+        max_rows: 1300
 - name: fct_kreis_rent_range
   description: Spread of rents inside each Kreis (10th to 90th percentile of grid cells, 100 m in cities, else 1 km).
   columns:
@@ -195,3 +231,34 @@ models:
         arguments:
           min_value: 100
           max_value: 300
+  data_tests:
+  - row_count_between:
+      arguments:
+        min_rows: 400
+        max_rows: 400
+- name: fct_source_freshness
+  description: Newest period contained in each source, its age in days and whether it is later than its release cadence allows
+    (DE-1).
+  columns:
+  - name: source_key
+    data_tests:
+    - unique
+    - not_null
+  - name: data_through
+    data_tests:
+    - not_null
+- name: fct_asking_estimate_validation
+  description: 'Leave-one-out test of the district asking-rent estimate on the 37 GREIX cities: estimated vs. real asking
+    rent (ML-2).'
+  columns:
+  - name: city
+    data_tests:
+    - unique
+    - not_null
+  - name: error_pct
+    data_tests:
+    - not_null
+    - between:
+        arguments:
+          min_value: -60
+          max_value: 60

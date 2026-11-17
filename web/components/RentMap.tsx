@@ -29,7 +29,7 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
   const mapRef = useRef<MLMap | null>(null);
   const [grid, setGrid] = useState<Grid | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [hover, setHover] = useState<{ x: number; y: number; v: number } | null>(null);
+  const [hover, setHover] = useState<{ x: number; y: number; v: number; w: number } | null>(null);
   const [plain, setPlain] = useState(false);
   const tk = useTokens(TOKENS);
   const { t, f } = useI18n();
@@ -101,6 +101,10 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
         const m = map;
         let loaded = false;
         m.on("load", () => { loaded = true; addOverlay(m); });
+        // FE-8: if the free tile service does not answer within 8 s, show the rent grid on a plain background
+        window.setTimeout(() => {
+          if (!loaded && !cancelled && mapRef.current === m) { setPlain(true); m.setStyle(plainStyle); }
+        }, 8000);
         m.on("style.load", () => addOverlay(m));
         m.on("error", (ev) => {
           // basemap unreachable: fall back to a plain background so the rent grid still shows
@@ -109,7 +113,7 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
         });
         m.on("mousemove", "cells", (ev) => {
           const f = ev.features?.[0];
-          if (f) setHover({ x: ev.point.x, y: ev.point.y, v: Number(f.properties?.v) });
+          if (f) setHover({ x: ev.point.x, y: ev.point.y, v: Number(f.properties?.v), w: m.getContainer().clientWidth });
         });
         m.on("mouseleave", "cells", () => setHover(null));
       } else {
@@ -127,9 +131,11 @@ export function RentMap({ ags, city }: { ags: string; city: string }) {
     <div>
       <div className="rentmap" role="region" aria-label={t(`Street map of ${city} with rent per 100 metre square`, `Stadtplan von ${city} mit Miete je 100-Meter-Quadrat`)}>
         <div ref={box} className="rentmap-canvas" />
+        {plain && geo && <div className="rentmap-fallback" role="status">{t("The street map could not be loaded (tile service unavailable), so the rent grid is shown on a plain background.",
+          "Der Stadtplan konnte nicht geladen werden (Kartendienst nicht erreichbar), daher erscheint das Mietgitter auf einfachem Hintergrund.")}</div>}
         {!geo && <div className="rentmap-loading">{t("Loading 100 m grid…", "100-m-Gitter wird geladen…")}</div>}
         {hover && geo && (
-          <div className="tooltip" style={{ position: "absolute", left: Math.min(hover.x + 14, (box.current?.clientWidth ?? 400) - 220), top: hover.y + 14, pointerEvents: "none", zIndex: 3 }}>
+          <div className="tooltip" style={{ position: "absolute", left: Math.min(hover.x + 14, hover.w - 220), top: hover.y + 14, pointerEvents: "none", zIndex: 3 }}>
             <b>{f.num(hover.v, 2)} € {t("per m²", "pro m²")}</b><br />{f.pct((100 * hover.v) / geo.med - 100, 0, true)} {t(`vs. the ${city} median`, `ggü. dem Median von ${city}`)}
           </div>
         )}

@@ -5,7 +5,9 @@ import { geoMercator, geoPath } from "d3-geo";
 import type { Feature, FeatureCollection } from "geojson";
 import { data } from "./data";
 
-export const HERO_W = 560, HERO_H = 760;
+import { HERO_H, HERO_W } from "./heroDims";
+
+export { HERO_H, HERO_W };
 
 export type HeroPath = { ags: string; d: string; fill: string; rank: number };
 
@@ -27,4 +29,29 @@ export function heroMap(rents: Record<string, number>) {
     ags: String(f.id), d: gp(f as unknown as Feature) ?? "", fill: fill(String(f.id)), rank: rank[String(f.id)] ?? 0,
   }));
   return { paths, lo, hi };
+}
+
+/** FE-2: the hero map as a standalone SVG file per theme (served from /hero-map-light.svg and /hero-map-dark.svg).
+ *  The page shows it as an <img>, so the 400 paths are no longer inlined twice (HTML + React payload) in the home
+ *  page; the interactive copy is fetched only when someone points at the map. */
+export const HERO_THEMES = {
+  light: { q1: "#cde2fb", q2: "#9ec5f4", q3: "#5598e7", q4: "#256abf", q5: "#0d366b", surface2: "#eeeef0", bg: "#f6f6f7" },
+  dark: { q1: "#0d366b", q2: "#184f95", q3: "#2a78d6", q4: "#6da7ec", q5: "#cde2fb", surface2: "#1f2024", bg: "#0f1012" },
+} as const;
+
+export function heroRents(): { rents: Record<string, number>; names: Record<string, string> } {
+  const asking = data.askingRents().filter((r) => r.rooms === "total");
+  return {
+    rents: Object.fromEntries(asking.map((r) => [r.ags, r.estimated_asking_rent_eur_sqm])),
+    names: Object.fromEntries(asking.map((r) => [r.ags, r.kreis_name])),
+  };
+}
+
+export function heroSvg(theme: keyof typeof HERO_THEMES, standalone = true): string {
+  const c = HERO_THEMES[theme];
+  const { paths } = heroMap(heroRents().rents);
+  const vars = `--q1:${c.q1};--q2:${c.q2};--q3:${c.q3};--q4:${c.q4};--q5:${c.q5};--surface-2:${c.surface2};--bg:${c.bg}`;
+  const body = paths.map((p) => `<path class="k" data-ags="${p.ags}" d="${p.d}" style="fill:${p.fill}"/>`).join("");
+  const style = standalone ? `<style>svg{${vars}}path{stroke:${c.bg};stroke-width:.6}</style>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HERO_W} ${HERO_H}" class="hero-map">${style}${body}</svg>`;
 }

@@ -42,7 +42,8 @@ select
     d.accounts_year                                                         as income_year,
     d.disposable_income_per_resident_eur,
     d.population,
-    round(cast(l.median_rent_sqm * {{ sqm }} as numeric), 0)                as reference_monthly_rent_eur,
+    -- rounded to 10 € everywhere (site, AI summary, API) so the same flat never shows 910 € and 911 € (UX-1)
+    round(cast(l.median_rent_sqm * {{ sqm }} / 10 as numeric), 0) * 10      as reference_monthly_rent_eur,
     round(cast(100.0 * l.median_rent_sqm * {{ sqm }} * 12
         / (d.disposable_income_per_resident_eur * {{ hh }}) as numeric), 2) as asking_rent_burden_pct,
     p.time_on_market_days_4q,

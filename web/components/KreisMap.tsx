@@ -3,7 +3,7 @@
 import { ArrowRight } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { scaleLinear } from "d3-scale";
+import { scaleThreshold } from "d3-scale";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { loadJson } from "@/lib/api";
 import { balance, href } from "@/lib/i18n";
@@ -41,6 +41,7 @@ export function KreisMap({ afford, sd, asking, citySlugs }: {
 }) {
   const { lang, t, f } = useI18n();
   const { eur, num, ordinal, pct } = f;
+  const measuredCount = asking.filter((r) => !r.is_modelled).length;
   const METRICS = METRICS_ALL[lang];
   const [metric, setMetric] = useState<Metric>("asking");
   const [sel, setSel] = useState<string>("05711");
@@ -67,19 +68,32 @@ export function KreisMap({ afford, sd, asking, citySlugs }: {
     if (metric === "rent") return k?.r?.rent_eur_sqm ?? null;
     return k?.r?.estimated_asking_rent_eur_sqm ?? null;
   };
+  // UX-5: five classes with a stepped legend instead of one continuous scale. Rents use quintiles (80 districts per
+  // colour), so a few very expensive cities can no longer squeeze everyone else into similar shades.
   const scale = useMemo(() => {
-    if (metric === "afford") return { domain: [50, 75, 100, 125, 150], lo: "50", hi: "150" };
-    if (metric === "sd") return { domain: [-3, -1.5, 0, 1.5, 3], lo: "−3", hi: "+3" };
     const n1 = (v: number) => v.toLocaleString(lang === "de" ? "de-DE" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    if (metric === "afford") return { breaks: [75, 90, 110, 125], label: (v: number) => String(v) };
+    if (metric === "sd") return { breaks: [-1.5, -0.5, 0.5, 1.5], label: (v: number) => (v > 0 ? `+${n1(v)}` : n1(v)) };
     const vals = asking.map((r) => (metric === "rent" ? r.rent_eur_sqm : r.estimated_asking_rent_eur_sqm)).sort((x, y) => x - y);
-    const lo = vals[Math.floor(vals.length * 0.02)], hi = vals[Math.floor(vals.length * 0.98)];
-    return { domain: [0, 0.25, 0.5, 0.75, 1].map((p) => lo + p * (hi - lo)), lo: `${n1(lo)} €`, hi: `${n1(hi)} €` };
+    const q = (p: number) => vals[Math.floor(vals.length * p)];
+    return { breaks: [q(0.2), q(0.4), q(0.6), q(0.8)], label: (v: number) => `${n1(v)} €` };
   }, [metric, asking, lang]);
+  const classes = useMemo(() => {
+    const b = scale.breaks;
+    return [0, 1, 2, 3, 4].map((i) => ({
+      color: tk[RAMPS[metric][i]],
+      text: i === 0 ? `< ${scale.label(b[0])}` : i === 4 ? `≥ ${scale.label(b[3])}` : `${scale.label(b[i - 1])} – ${scale.label(b[i])}`,
+    }));
+  }, [scale, metric, tk]);
   const color = useMemo(() => {
     if (!tk["--q1"]) return () => "transparent";
-    const s = scaleLinear<string>().domain(scale.domain).range(RAMPS[metric].map((k) => tk[k])).clamp(true);
+    const s = scaleThreshold<number, string>().domain(scale.breaks).range(RAMPS[metric].map((k) => tk[k]));
     return (a: string) => { const v = value(a); return v == null ? tk["--surface"] : s(v); };
-  }, [metric, scale, tk, byAgs]);
+  }, [metric, scale, tk, byAgs]); // eslint-disable-line react-hooks/exhaustive-deps -- `value` only reads metric and byAgs
+  const [showTable, setShowTable] = useState(false);
+  const tableRows = useMemo(() => afford.map((a) => ({ ags: a.ags, name: a.kreis_name.split(",")[0], land: a.land_name, v: value(a.ags) }))
+    .sort((x, y) => (y.v ?? -1e9) - (x.v ?? -1e9)), [afford, metric, byAgs]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fmtV = (v: number | null) => v == null ? f.NA : metric === "afford" ? num(v) : metric === "sd" ? num(v, 2) : eur(v);
 
   useEffect(() => {
     setRooms(null);
@@ -114,11 +128,17 @@ export function KreisMap({ afford, sd, asking, citySlugs }: {
           </div>
         </div>
         <p className="figure-sub" style={{ marginBottom: 8 }}>{METRICS[metric].what}</p>
-        <div className="legend" style={{ marginBottom: 6 }}>
-          <span>{scale.lo} · {METRICS[metric].low}</span>
-          <span className="bar" style={{ background: `linear-gradient(90deg, ${RAMPS[metric].map((k) => tk[k]).join(",")})` }} />
-          <span>{scale.hi} · {METRICS[metric].high}</span>
+        <div className="legend legend-steps" style={{ marginBottom: 6 }} aria-label={t("Colour classes", "Farbklassen")}>
+          <span className="muted">{METRICS[metric].low}</span>
+          {classes.map((c) => <span key={c.text} className="key"><span className="sw" style={{ background: c.color }} />{c.text}</span>)}
+          <span className="muted">{METRICS[metric].high}</span>
         </div>
+        {metric === "asking" && (
+          <p className="note" style={{ margin: "0 0 6px" }}>
+            <span className="sw-measured" aria-hidden /> {t(`Outlined: measured from listings (${measuredCount} districts). Every other district is a modelled estimate; hover for its likely range.`,
+              `Umrandet: aus Inseraten gemessen (${measuredCount} Kreise). Alle anderen Kreise sind Modellschätzungen; beim Darüberfahren erscheint die wahrscheinliche Spanne.`)}
+          </p>
+        )}
         <div className="mapwrap" onMouseLeave={() => setHover(null)}>
           {paths ? (
             <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} style={{ width: "100%", maxHeight: 740, display: "block" }} role="img" aria-label={`${t("Map of German districts", "Karte der deutschen Kreise")}: ${METRICS[metric].label}`}>
@@ -130,6 +150,9 @@ export function KreisMap({ afford, sd, asking, citySlugs }: {
                     setHover({ ags: p.ags, x: e.clientX - r.left, y: e.clientY - r.top });
                   }} />
               ))}
+              {metric === "asking" && paths.filter((p) => byAgs[p.ags]?.r && !byAgs[p.ags]!.r!.is_modelled).map((p) => (
+                <path key={"m" + p.ags + p.d.length} d={p.d} fill="none" stroke={tk["--ink"]} strokeWidth={1.4} pointerEvents="none" />
+              ))}
               {paths.filter((p) => p.ags === sel).map((p) => (
                 <g key="sel" pointerEvents="none">
                   <path d={p.d} fill="none" stroke={tk["--ink"]} strokeWidth={2.2} />
@@ -140,12 +163,33 @@ export function KreisMap({ afford, sd, asking, citySlugs }: {
           {hover && h?.a && (
             <div className="tooltip" style={{ position: "absolute", left: Math.min(hover.x + 14, 300), top: hover.y + 14, pointerEvents: "none" }}>
               <b>{h.a.kreis_name.split(",")[0]}</b> <span className="tt-k">{h.a.land_name}</span><br />
-              {t("Today about", "Heute etwa")} {eur(h.r?.estimated_asking_rent_eur_sqm)}/m² · {t("2022 leases", "Bestand 2022")} {eur(h.a.rent_eur_sqm)}<br />
+              {t("Today about", "Heute etwa")} {eur(h.r?.estimated_asking_rent_eur_sqm)}/m²{" "}
+              {h.r?.is_modelled ? <span className="tt-k">({t("modelled, likely", "modelliert, wahrscheinlich")} {eur(h.r.estimate_low_eur_sqm)} {t("to", "bis")} {eur(h.r.estimate_high_eur_sqm)})</span>
+                : <span className="tt-k">({t("measured from listings", "aus Inseraten gemessen")})</span>}<br />
+              {t("2022 leases", "Bestand 2022")} {eur(h.a.rent_eur_sqm)}<br />
               <span className="tt-k">{t("Affordability", "Bezahlbarkeit")} {num(h.a.affordability_index)} · {t("market", "Markt")} {balance(lang, h.s?.market_balance)}</span>
             </div>
           )}
         </div>
-        <p className="note" style={{ marginTop: 6 }}>{t("Hover for values, click or search to read about a district.", "Für Werte darüberfahren, für Details klicken oder suchen.")}</p>
+        <p className="note" style={{ marginTop: 6 }}>{t("Hover for values, click or search to read about a district, or use the table below with a keyboard.", "Für Werte darüberfahren, für Details klicken oder suchen, oder die Tabelle unten per Tastatur nutzen.")}</p>
+        {/* FE-4: the same data as a table, so the map is not the only way in (keyboard and screen readers) */}
+        <details className="numbers" onToggle={(e) => setShowTable((e.currentTarget as HTMLDetailsElement).open)}>
+          <summary>{t(`Show all 400 districts as a table (${METRICS[metric].label})`, `Alle 400 Kreise als Tabelle zeigen (${METRICS[metric].label})`)}</summary>
+          {showTable && (
+            <div className="tablewrap" tabIndex={0} style={{ maxHeight: 420, overflowY: "auto", marginTop: 8 }}>
+              <table>
+                <thead><tr><th>{t("District", "Kreis")}</th><th>{t("State", "Land")}</th><th className="num">{METRICS[metric].label}</th><th><span className="sr-only">{t("Select", "Auswählen")}</span></th></tr></thead>
+                <tbody>{tableRows.map((r) => (
+                  <tr key={r.ags} style={{ background: sel === r.ags ? "var(--surface-2)" : undefined }}>
+                    <td className="cellwrap">{r.name}{metric === "asking" && byAgs[r.ags]?.r?.is_modelled && <span className="muted"> ({t("est.", "gesch.")})</span>}</td>
+                    <td className="cellwrap muted">{r.land}</td><td className="num">{fmtV(r.v)}</td>
+                    <td><button type="button" className="chip" onClick={() => setSel(r.ags)} aria-pressed={sel === r.ags}>{t("Show", "Zeigen")}</button></td>
+                  </tr>))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </details>
       </div>
 
       <aside className="card">
@@ -155,7 +199,7 @@ export function KreisMap({ afford, sd, asking, citySlugs }: {
             <h3 style={{ fontSize: 26, margin: "4px 0 10px" }}>{nm}</h3>
             <div className="prose" style={{ fontSize: 17 }}>
               {t(<>
-              <p>A new lease here is estimated at <b>{eur(s.r?.estimated_asking_rent_eur_sqm)}</b> per m²
+              <p>A new lease here is estimated at <b>{eur(s.r?.estimated_asking_rent_eur_sqm)}</b> per m²{s.r?.is_modelled && <> (modelled from census rents; likely {eur(s.r.estimate_low_eur_sqm)} to {eur(s.r.estimate_high_eur_sqm)})</>}
                 {askRank[sel] && <> ({ordinal(askRank[sel])} most expensive of 400)</>}, so about{" "}
                 <b>{num(Math.round(((s.r?.estimated_asking_rent_eur_sqm ?? 0) * 60) / 10) * 10)} €</b> a month for 60 m², cold.
                 Existing leases averaged {eur(s.a.rent_eur_sqm)} in 2022.</p>
@@ -165,7 +209,7 @@ export function KreisMap({ afford, sd, asking, citySlugs }: {
               {s.s && <p>The market is <b>{balance(lang, s.s.market_balance)}</b>: {pct(s.s.market_active_vacancy_pct)} of flats stood empty and available, and the
                 population {s.s.population_growth_5y_pct >= 0 ? "grew" : "shrank"} {pct(Math.abs(s.s.population_growth_5y_pct))} in five years.</p>}
               </>, <>
-              <p>Ein Neuvertrag wird hier auf <b>{eur(s.r?.estimated_asking_rent_eur_sqm)}</b> pro m² geschätzt
+              <p>Ein Neuvertrag wird hier auf <b>{eur(s.r?.estimated_asking_rent_eur_sqm)}</b> pro m² geschätzt{s.r?.is_modelled && <> (aus Zensusmieten modelliert; wahrscheinlich {eur(s.r.estimate_low_eur_sqm)} bis {eur(s.r.estimate_high_eur_sqm)})</>}
                 {askRank[sel] && <> (Platz {askRank[sel]} der teuersten von 400)</>}, also etwa{" "}
                 <b>{num(Math.round(((s.r?.estimated_asking_rent_eur_sqm ?? 0) * 60) / 10) * 10)} €</b> im Monat für 60 m², kalt.
                 Bestandsverträge lagen 2022 im Schnitt bei {eur(s.a.rent_eur_sqm)}.</p>

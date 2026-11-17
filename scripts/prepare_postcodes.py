@@ -18,11 +18,10 @@ import shapely
 from shapely.geometry import mapping, shape
 from shapely.ops import transform
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "ingestion"))
+from immodash_ingest.config import city_kreis_codes, raw_path
+from immodash_ingest.sources.zensus_grid import _TO_3035, kreis_polygons_3035
 
-from immodash_ingest.config import city_kreis_codes, raw_path  # noqa: E402
-from immodash_ingest.sources.zensus_grid import _TO_3035, kreis_polygons_3035  # noqa: E402
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load(path: Path) -> dict:

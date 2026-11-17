@@ -4,10 +4,9 @@ sources:
   - name: bronze
     schema: bronze
     description: Raw public datasets landed by the ingestion pipeline (one table per source file).
-    loaded_at_field: _loaded_at
-    freshness:
-      warn_after: {count: 2, period: day}
-      error_after: {count: 8, period: day}
+    # No dbt source freshness here on purpose: `_loaded_at` is set on every load, even from a cached file,
+    # so it says nothing about how new the data is (audit DE-1). Content recency is modelled in
+    # gold.fct_source_freshness and tested by tests/assert_sources_not_*.sql (tag: freshness).
     tables:
       - name: zensus_rent_by_rooms
         description: Zensus 2022 table 4000W-0011, average net cold rent per m² by rooms, 400 Kreise.

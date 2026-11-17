@@ -54,9 +54,11 @@ def _figures(get) -> tuple[dict, dict]:
     aff = pd.DataFrame(get("/kreise/affordability"))
     rents = pd.DataFrame(get("/kreise/asking-rents", rooms="total"))
     sd = pd.DataFrame(get("/kreise/supply-demand"))
-    kreise = rents[["ags", "kreis_name", "rent_eur_sqm", "estimated_asking_rent_eur_sqm"]].merge(
-        aff[["ags", "land_name", "affordability_index", "rent_burden_pct"]], on="ags").merge(
-        sd[["ags", "supply_demand_index"]], on="ags")
+    kreise = (
+        rents[["ags", "kreis_name", "rent_eur_sqm", "estimated_asking_rent_eur_sqm"]]
+        .merge(aff[["ags", "land_name", "affordability_index", "rent_burden_pct"]], on="ags")
+        .merge(sd[["ags", "supply_demand_index"]], on="ags")
+    )
     geo = _simplify(get("/geo/kreise"))
     cities = pd.DataFrame(get("/cities"))
     hl_base = {r.ags: r.city_en for r in cities.itertuples() if r.city in slots}
@@ -84,7 +86,9 @@ def _figures(get) -> tuple[dict, dict]:
                 f.update_geos(bgcolor="rgba(0,0,0,0)")
             figs.setdefault(k, {})[theme] = json.loads(pio.to_json(f, validate=False))
     facts = {
-        "kreise": len(aff), "cities": len(cities), "latest_month": str(cities["latest_month"].max())[:7],
+        "kreise": len(aff),
+        "cities": len(cities),
+        "latest_month": str(cities["latest_month"].max())[:7],
         "grid_cells_berlin": len(grid["x"]),
         "backtest": bt.to_dict("records"),
     }
@@ -130,14 +134,16 @@ def build_fragment(result: dict, warehouse_url: str) -> str:
         if c["name"].startswith("dbt"):
             tests = [d for d in details if d["type"] == "test"]
             models = [d for d in details if d["type"] != "test"]
-            det = (f"<h4>Models and seeds ({len(models)})</h4>{_table(models)}"
-                   f"<h4>Data tests ({len(tests)})</h4>{_table(tests, 120)}")
+            det = (
+                f"<h4>Models and seeds ({len(models)})</h4>{_table(models)}"
+                f"<h4>Data tests ({len(tests)})</h4>{_table(tests, 120)}"
+            )
         else:
             det = _table(details, limit)
         rows_html.append(f"""
-        <details class="check" {'open' if not c['ok'] else ''} id="check-{i}">
-          <summary>{_pill(c['ok'])}<span class="cname">{html.escape(c['name'])}</span>
-            <span class="csum">{html.escape(c['summary'])}</span><span class="csec">{c['seconds']:.1f} s</span></summary>
+        <details class="check" {"open" if not c["ok"] else ""} id="check-{i}">
+          <summary>{_pill(c["ok"])}<span class="cname">{html.escape(c["name"])}</span>
+            <span class="csum">{html.escape(c["summary"])}</span><span class="csec">{c["seconds"]:.1f} s</span></summary>
           <div class="cbody">{det or '<p class="note">No further detail.</p>'}</div>
         </details>""")
 
@@ -301,9 +307,10 @@ new MutationObserver(draw).observe(document.documentElement, {{attributes: true,
 def build_report(result: dict, warehouse_url: str, out_dir: Path) -> Path:
     frag = build_fragment(result, warehouse_url)
     (out_dir / "verification_report.fragment.html").write_text(frag, encoding="utf-8")
-    page = ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head><body>"
-            + frag + "</body></html>")
+    page = (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1"></head><body>' + frag + "</body></html>"
+    )
     path = out_dir / "verification_report.html"
     path.write_text(page, encoding="utf-8")
     return path

@@ -1,8 +1,27 @@
+# Never send secrets, private notes or bulky build output to the Docker build context (SEC-4).
 .git
+.github
+.env
+.env.*
+!.env.example
+.private
+.agents
 .venv
-__pycache__
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
 warehouse/*.duckdb*
 dbt/target
 dbt/logs
+dbt/dbt_packages
+web
+reports
+docs
+tests
 _to_delete
-.pytest_cache
+Audit report/
+*.md
+!README.md

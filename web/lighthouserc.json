@@ -1,0 +1,51 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "node scripts/serve-out.mjs",
+      "startServerReadyPattern": "serving",
+      "url": [
+        "http://localhost:4173/",
+        "http://localhost:4173/cities/berlin",
+        "http://localhost:4173/map",
+        "http://localhost:4173/de"
+      ],
+      "numberOfRuns": 1,
+      "settings": {
+        "preset": "desktop",
+        "chromeFlags": "--no-sandbox --headless=new"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": [
+          "warn",
+          {
+            "minScore": 0.85
+          }
+        ],
+        "categories:accessibility": [
+          "error",
+          {
+            "minScore": 0.95
+          }
+        ],
+        "categories:best-practices": [
+          "error",
+          {
+            "minScore": 0.9
+          }
+        ],
+        "categories:seo": [
+          "error",
+          {
+            "minScore": 0.9
+          }
+        ]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci"
+    }
+  }
+}

@@ -55,12 +55,28 @@ def rent_trend_lines(df: pd.DataFrame, slots: dict, theme: str) -> go.Figure:
     for y, name, color, x in last_points:
         y_lab = y if not placed or y - placed[-1] >= min_gap else placed[-1] + min_gap
         placed.append(y_lab)
-        fig.add_annotation(x=x, y=y_lab, text=f"{name} {y:.1f}", showarrow=False, xanchor="left", xshift=6,
-                           font=dict(color=t["text_2"], size=11))
-        fig.add_trace(go.Scatter(x=[x], y=[y], mode="markers", hoverinfo="skip", showlegend=False,
-                                 marker=dict(color=color, size=8, line=dict(color=t["surface"], width=2))))
-    fig.update_layout(**base_layout(theme, hovermode="x unified", showlegend=True,
-                                    margin=dict(l=48, r=120, t=28, b=36)))
+        fig.add_annotation(
+            x=x,
+            y=y_lab,
+            text=f"{name} {y:.1f}",
+            showarrow=False,
+            xanchor="left",
+            xshift=6,
+            font=dict(color=t["text_2"], size=11),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[x],
+                y=[y],
+                mode="markers",
+                hoverinfo="skip",
+                showlegend=False,
+                marker=dict(color=color, size=8, line=dict(color=t["surface"], width=2)),
+            )
+        )
+    fig.update_layout(
+        **base_layout(theme, hovermode="x unified", showlegend=True, margin=dict(l=48, r=120, t=28, b=36))
+    )
     fig.update_yaxes(ticksuffix=" €", showgrid=True)
     fig.update_xaxes(showspikes=True, spikecolor=t["axis"], spikethickness=1, spikedash="solid")
     return fig
@@ -76,8 +92,9 @@ def city_range_dots(snap: pd.DataFrame, slots: dict, focus: str, theme: str) -> 
     for r in snap.itertuples():
         xs += [r.p25_rent_sqm, r.p75_rent_sqm, None]
         ys += [r.city_en, r.city_en, None]
-    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", line=dict(color=t["context"], width=4), opacity=0.55,
-                             hoverinfo="skip"))
+    fig.add_trace(
+        go.Scatter(x=xs, y=ys, mode="lines", line=dict(color=t["context"], width=4), opacity=0.55, hoverinfo="skip")
+    )
     fig.add_trace(
         go.Scatter(
             x=snap["median_rent_sqm"],
@@ -94,10 +111,16 @@ def city_range_dots(snap: pd.DataFrame, slots: dict, focus: str, theme: str) -> 
         )
     )
     fig.update_layout(**base_layout(theme, margin=dict(l=8, r=12, t=8, b=36)))
-    fig.update_yaxes(tickfont=dict(size=11), automargin=True, tickmode="array", tickvals=list(snap["city_en"]),
-                     range=[-0.8, len(snap) - 0.2])
-    fig.update_xaxes(ticksuffix=" €", showgrid=True,
-                     range=[snap["p25_rent_sqm"].min() - 1, snap["p75_rent_sqm"].max() + 1])
+    fig.update_yaxes(
+        tickfont=dict(size=11),
+        automargin=True,
+        tickmode="array",
+        tickvals=list(snap["city_en"]),
+        range=[-0.8, len(snap) - 0.2],
+    )
+    fig.update_xaxes(
+        ticksuffix=" €", showgrid=True, range=[snap["p25_rent_sqm"].min() - 1, snap["p75_rent_sqm"].max() + 1]
+    )
     return fig
 
 
@@ -106,8 +129,10 @@ def rent_burden_scatter(snap: pd.DataFrame, slots: dict, focus: str, theme: str)
     fig = go.Figure()
     sel = snap["city"].isin((slots or {}).keys())
     size = 8 + 22 * (snap["population"] / snap["population"].max()) ** 0.5
-    hover = ("<b>%{customdata[1]}</b><br>Rent burden %{y:.1f}%<br>YoY %{x:+.1f}%<br>"
-             "Median %{customdata[2]:.2f} €/m²<extra></extra>")
+    hover = (
+        "<b>%{customdata[1]}</b><br>Rent burden %{y:.1f}%<br>YoY %{x:+.1f}%<br>"
+        "Median %{customdata[2]:.2f} €/m²<extra></extra>"
+    )
     positions = _label_positions(snap[sel], "index_yoy_pct", "asking_rent_burden_pct")
     for mask, is_sel in ((~sel, False), (sel, True)):
         part = snap[mask]
@@ -131,11 +156,23 @@ def rent_burden_scatter(snap: pd.DataFrame, slots: dict, focus: str, theme: str)
         )
     med = snap["asking_rent_burden_pct"].median()
     fig.add_hline(y=med, line=dict(color=t["axis"], width=1, dash="dot"))
-    fig.add_annotation(x=1, xref="paper", y=med, text=f"median {med:.1f}%", showarrow=False, xanchor="right",
-                       yanchor="bottom", font=dict(color=t["muted"], size=11))
+    fig.add_annotation(
+        x=1,
+        xref="paper",
+        y=med,
+        text=f"median {med:.1f}%",
+        showarrow=False,
+        xanchor="right",
+        yanchor="bottom",
+        font=dict(color=t["muted"], size=11),
+    )
     fig.update_layout(**base_layout(theme))
-    fig.update_xaxes(title=dict(text="Asking rent change, YoY %", font=dict(size=11)), ticksuffix="%",
-                     zeroline=True, zerolinecolor=t["axis"])
+    fig.update_xaxes(
+        title=dict(text="Asking rent change, YoY %", font=dict(size=11)),
+        ticksuffix="%",
+        zeroline=True,
+        zerolinecolor=t["axis"],
+    )
     fig.update_yaxes(title=dict(text="Rent burden %", font=dict(size=11)), ticksuffix="%", showgrid=True)
     return fig
 
@@ -170,7 +207,10 @@ def pressure_lines(df: pd.DataFrame, slots: dict, theme: str) -> go.Figure:
         name = g["city_en"].iloc[0]
         fig.add_trace(
             go.Scatter(
-                x=g["period_date"], y=g["time_on_market_days_4q"], name=name, mode="lines+markers",
+                x=g["period_date"],
+                y=g["time_on_market_days_4q"],
+                name=name,
+                mode="lines+markers",
                 line=dict(color=_city_color(city, slots, theme) or t["context"], width=2),
                 marker=dict(size=5),
                 customdata=(100 * g[["share_closed_within_week_4q"]]).to_numpy(),
@@ -211,9 +251,14 @@ def choropleth(df: pd.DataFrame, geojson: dict, metric: str, selected: str | Non
             zmid=zmid,
             colorscale=cs,
             marker=dict(line=dict(color=t["surface"], width=0.5)),
-            colorbar=dict(title=dict(text=bar_title, font=dict(size=11, color=t["text_2"])), thickness=10,
-                          len=0.6, ticksuffix=suffix, tickfont=dict(color=t["text_2"], size=10),
-                          outlinewidth=0),
+            colorbar=dict(
+                title=dict(text=bar_title, font=dict(size=11, color=t["text_2"])),
+                thickness=10,
+                len=0.6,
+                ticksuffix=suffix,
+                tickfont=dict(color=t["text_2"], size=10),
+                outlinewidth=0,
+            ),
             customdata=custom,
             hovertemplate="<b>%{customdata[0]}</b><br>%{customdata[1]}<br>"
             f"Value %{{z:{fmt}}}{suffix}<br>Zensus rent %{{customdata[2]:.2f}} €/m²<br>"
@@ -223,9 +268,13 @@ def choropleth(df: pd.DataFrame, geojson: dict, metric: str, selected: str | Non
     if selected and selected in set(df["ags"]):
         fig.add_trace(
             go.Choropleth(
-                geojson=geojson, locations=[selected], z=[0], showscale=False,
+                geojson=geojson,
+                locations=[selected],
+                z=[0],
+                showscale=False,
                 colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
-                marker=dict(line=dict(color=t["text"], width=2)), hoverinfo="skip",
+                marker=dict(line=dict(color=t["text"], width=2)),
+                hoverinfo="skip",
             )
         )
     fig.update_geos(fitbounds="locations", visible=False, bgcolor=t["surface"], projection_type="mercator")
@@ -245,17 +294,39 @@ def kreis_rooms_bars(rooms: pd.DataFrame, theme: str, labels: list[str] | None =
     else:
         r = rooms
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=labels, y=r["rent_eur_sqm"], name="Zensus 2022 (existing contracts)",
-                         marker=dict(color=t["series"][0], cornerradius=4),
-                         hovertemplate="%{x}: %{y:.2f} €/m² (2022)<extra></extra>"))
-    fig.add_trace(go.Bar(x=labels, y=r["estimated_asking_rent_eur_sqm"], name="Est. asking rent today",
-                         marker=dict(color=t["series"][1], cornerradius=4),
-                         hovertemplate="%{x}: %{y:.2f} €/m² (estimate)<extra></extra>"))
-    fig.add_trace(go.Scatter(x=labels, y=r["national_mean_rent_eur_sqm"], mode="markers", name="National mean 2022",
-                             marker=dict(symbol="line-ew", size=22, line=dict(color=t["text_2"], width=2)),
-                             hovertemplate="%{x}: national mean %{y:.2f} €/m²<extra></extra>"))
-    fig.update_layout(**base_layout(theme, barmode="group", bargap=0.35, bargroupgap=0.08, showlegend=True,
-                                    margin=dict(l=40, r=8, t=36, b=36)))
+    fig.add_trace(
+        go.Bar(
+            x=labels,
+            y=r["rent_eur_sqm"],
+            name="Zensus 2022 (existing contracts)",
+            marker=dict(color=t["series"][0], cornerradius=4),
+            hovertemplate="%{x}: %{y:.2f} €/m² (2022)<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            x=labels,
+            y=r["estimated_asking_rent_eur_sqm"],
+            name="Est. asking rent today",
+            marker=dict(color=t["series"][1], cornerradius=4),
+            hovertemplate="%{x}: %{y:.2f} €/m² (estimate)<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=labels,
+            y=r["national_mean_rent_eur_sqm"],
+            mode="markers",
+            name="National mean 2022",
+            marker=dict(symbol="line-ew", size=22, line=dict(color=t["text_2"], width=2)),
+            hovertemplate="%{x}: national mean %{y:.2f} €/m²<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        **base_layout(
+            theme, barmode="group", bargap=0.35, bargroupgap=0.08, showlegend=True, margin=dict(l=40, r=8, t=36, b=36)
+        )
+    )
     fig.update_yaxes(ticksuffix=" €", showgrid=True, rangemode="tozero")
     return fig
 
@@ -270,10 +341,14 @@ def affordability_ranking(aff: pd.DataFrame, theme: str, n: int = 10) -> go.Figu
     colors = [t["div"][-2]] * len(best) + [t["div"][1]] * len(worst)
     fig = go.Figure(
         go.Bar(
-            x=df["rent_burden_pct"], y=df["label"], orientation="h",
+            x=df["rent_burden_pct"],
+            y=df["label"],
+            orientation="h",
             marker=dict(color=colors, cornerradius=4),
-            text=[f"{v:.1f}%" for v in df["rent_burden_pct"]], textposition="outside",
-            textfont=dict(color=t["text_2"], size=11), cliponaxis=False,
+            text=[f"{v:.1f}%" for v in df["rent_burden_pct"]],
+            textposition="outside",
+            textfont=dict(color=t["text_2"], size=11),
+            cliponaxis=False,
             customdata=df[["kreis_name", "rent_eur_sqm", "disposable_income_per_resident_eur", "land_name"]].to_numpy(),
             hovertemplate="<b>%{customdata[0]}</b> (%{customdata[3]})<br>Burden %{x:.1f}%<br>"
             "Rent %{customdata[1]:.2f} €/m² · income %{customdata[2]:,.0f} €<extra></extra>",
@@ -281,8 +356,15 @@ def affordability_ranking(aff: pd.DataFrame, theme: str, n: int = 10) -> go.Figu
     )
     med = aff["rent_burden_pct"].median()
     fig.add_vline(x=med, line=dict(color=t["axis"], dash="dot", width=1))
-    fig.add_annotation(x=med, y=1.0, yref="paper", text=f"median {med:.1f}%", showarrow=False, yanchor="bottom",
-                       font=dict(color=t["muted"], size=11))
+    fig.add_annotation(
+        x=med,
+        y=1.0,
+        yref="paper",
+        text=f"median {med:.1f}%",
+        showarrow=False,
+        yanchor="bottom",
+        font=dict(color=t["muted"], size=11),
+    )
     fig.update_layout(**base_layout(theme, margin=dict(l=8, r=40, t=20, b=36), bargap=0.3))
     fig.update_yaxes(automargin=True, tickfont=dict(size=11))
     fig.update_xaxes(ticksuffix="%", showgrid=True)
@@ -291,13 +373,27 @@ def affordability_ranking(aff: pd.DataFrame, theme: str, n: int = 10) -> go.Figu
 
 def _single_line(x, y, theme: str, suffix: str, hover: str, color_slot: int = 0) -> go.Figure:
     t = tokens(theme)
-    fig = go.Figure(go.Scatter(x=x, y=y, mode="lines", line=dict(color=t["series"][color_slot], width=2),
-                               hovertemplate=hover + "<extra></extra>"))
-    fig.add_trace(go.Scatter(x=[x.iloc[-1]], y=[y.iloc[-1]], mode="markers+text", text=[f"{y.iloc[-1]:,.2f}{suffix}"
-                             if suffix.strip() == "%" else f"{y.iloc[-1]:,.0f}{suffix}"],
-                             textposition="middle left", textfont=dict(color=t["text_2"], size=11),
-                             marker=dict(color=t["series"][color_slot], size=8,
-                                         line=dict(color=t["surface"], width=2)), hoverinfo="skip"))
+    fig = go.Figure(
+        go.Scatter(
+            x=x,
+            y=y,
+            mode="lines",
+            line=dict(color=t["series"][color_slot], width=2),
+            hovertemplate=hover + "<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[x.iloc[-1]],
+            y=[y.iloc[-1]],
+            mode="markers+text",
+            text=[f"{y.iloc[-1]:,.2f}{suffix}" if suffix.strip() == "%" else f"{y.iloc[-1]:,.0f}{suffix}"],
+            textposition="middle left",
+            textfont=dict(color=t["text_2"], size=11),
+            marker=dict(color=t["series"][color_slot], size=8, line=dict(color=t["surface"], width=2)),
+            hoverinfo="skip",
+        )
+    )
     fig.update_layout(**base_layout(theme, hovermode="x"))
     fig.update_yaxes(ticksuffix=suffix, showgrid=True)
     fig.update_xaxes(showspikes=True, spikecolor=t["axis"], spikethickness=1)
@@ -311,5 +407,11 @@ def mortgage_rate_line(df: pd.DataFrame, theme: str) -> go.Figure:
 
 def mortgage_payment_line(df: pd.DataFrame, theme: str) -> go.Figure:
     df = df.assign(period_date=pd.to_datetime(df["period_date"]))
-    return _single_line(df["period_date"], df["monthly_payment_reference_loan_eur"], theme, " €",
-                        "%{x|%b %Y}: %{y:,.0f} €/month", color_slot=1)
+    return _single_line(
+        df["period_date"],
+        df["monthly_payment_reference_loan_eur"],
+        theme,
+        " €",
+        "%{x|%b %Y}: %{y:,.0f} €/month",
+        color_slot=1,
+    )

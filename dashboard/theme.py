@@ -58,11 +58,24 @@ def base_layout(theme: str, **overrides) -> dict:
         plot_bgcolor=t["surface"],
         margin=dict(l=48, r=16, t=8, b=36),
         hoverlabel=dict(bgcolor=t["surface_2"], bordercolor=t["axis"], font=dict(color=t["text"], family=FONT)),
-        xaxis=dict(gridcolor=t["grid"], linecolor=t["axis"], zeroline=False, tickcolor=t["axis"],
-                   showgrid=False, ticks="outside"),
+        xaxis=dict(
+            gridcolor=t["grid"],
+            linecolor=t["axis"],
+            zeroline=False,
+            tickcolor=t["axis"],
+            showgrid=False,
+            ticks="outside",
+        ),
         yaxis=dict(gridcolor=t["grid"], linecolor=t["axis"], zeroline=False, showline=False),
-        legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0,
-                    font=dict(color=t["text_2"]), bgcolor="rgba(0,0,0,0)"),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.0,
+            xanchor="left",
+            x=0,
+            font=dict(color=t["text_2"]),
+            bgcolor="rgba(0,0,0,0)",
+        ),
         showlegend=False,
     )
     layout.update(overrides)

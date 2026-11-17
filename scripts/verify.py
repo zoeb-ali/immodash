@@ -27,22 +27,44 @@ import sys
 import tempfile
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(ROOT), str(ROOT / "ingestion")]
-ENV = {**os.environ, "PYTHONPATH": f"{ROOT}{os.pathsep}{ROOT / 'ingestion'}", "DBT_PROFILES_DIR": str(ROOT / "dbt")}
+ENV = {**os.environ, "DBT_PROFILES_DIR": str(ROOT / "dbt")}  # packages come from `pip install -e .`
 
 ENDPOINTS = [
-    "/health", "/meta/sources", "/cities", "/rents/monthly?cities=Bielefeld&cities=Berlin",
-    "/market-pressure?cities=Berlin", "/kreise/affordability", "/kreise/rents?rooms=2", "/kreise/asking-rents",
-    "/kreise/05711/asking-rents", "/kreise/05711/rents", "/affordability/finder?budget_eur=700&sqm=60&limit=400",
-    "/affordability/finder?budget_eur=700&sqm=50&size_band=WFL040B059&limit=400", "/mortgage-rates", "/geo/kreise",
-    "/kreise/rents-by-size?size_band=WFL060B079", "/kreise/supply-demand", "/cities/supply-demand",
-    "/kreise/neighbourhood-spread", "/kreise/11000/grid", "/kreise/05711/grid?resolution_m=1000", "/bezirke/rents",
-    "/forecasts", "/forecasts/backtest", "/anomalies", "/cities/Bielefeld/summary?llm=false",
-    "/kreise/rent-range", "/postcodes/rents?ags=05711",
+    "/health",
+    "/meta/sources",
+    "/cities",
+    "/rents/monthly?cities=Bielefeld&cities=Berlin",
+    "/market-pressure?cities=Berlin",
+    "/kreise/affordability",
+    "/kreise/rents?rooms=2",
+    "/kreise/asking-rents",
+    "/kreise/05711/asking-rents",
+    "/kreise/05711/rents",
+    "/affordability/finder?budget_eur=700&sqm=60&limit=400",
+    "/affordability/finder?budget_eur=700&sqm=50&size_band=WFL040B059&limit=400",
+    "/mortgage-rates",
+    "/geo/kreise",
+    "/kreise/rents-by-size?size_band=WFL060B079",
+    "/kreise/supply-demand",
+    "/cities/supply-demand",
+    "/kreise/neighbourhood-spread",
+    "/kreise/11000/grid",
+    "/kreise/05711/grid?resolution_m=1000",
+    "/bezirke/rents",
+    "/forecasts",
+    "/forecasts/backtest",
+    "/anomalies",
+    "/cities/Bielefeld/summary",
+    "/meta/freshness",
+    "/validation/asking-estimate",
+    "/forecasts/backtest/cities",
+    "/v1/cities",
+    "/kreise/rent-range",
+    "/postcodes/rents?ags=05711",
 ]
 
 
@@ -81,7 +103,11 @@ def api_server(warehouse_url: str):
     port = free_port()
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "api.main:app", "--port", str(port), "--log-level", "warning"],
-        cwd=ROOT, env={**ENV, "WAREHOUSE_URL": warehouse_url}, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        cwd=ROOT,
+        env={**ENV, "WAREHOUSE_URL": warehouse_url},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
     import httpx
 
     base = f"http://127.0.0.1:{port}"
@@ -110,19 +136,33 @@ def check_ingest(url: str):
     from immodash_ingest.pipeline import run as ingest
 
     counts = ingest(offline=True, warehouse_url=url)
-    return all(n > 0 for n in counts.values()), f"{len(counts)} bronze tables, {sum(counts.values()):,} rows", [
-        {"table": f"bronze.{k}", "rows": v} for k, v in counts.items()]
+    return (
+        all(n > 0 for n in counts.values()),
+        f"{len(counts)} bronze tables, {sum(counts.values()):,} rows",
+        [{"table": f"bronze.{k}", "rows": v} for k, v in counts.items()],
+    )
 
 
 def check_dbt(env: dict, target_dir: Path):
     p = run(["dbt", "build", "--target-path", str(target_dir)], env=env, cwd=ROOT / "dbt")
     res = json.loads((target_dir / "run_results.json").read_text())["results"]
-    rows = [{"node": r["unique_id"].split(".", 1)[1], "type": r["unique_id"].split(".")[0],
-             "status": r["status"], "seconds": round(r["execution_time"], 2)} for r in res]
+    rows = [
+        {
+            "node": r["unique_id"].split(".", 1)[1],
+            "type": r["unique_id"].split(".")[0],
+            "status": r["status"],
+            "seconds": round(r["execution_time"], 2),
+        }
+        for r in res
+    ]
     n_models = sum(r["type"] in ("model", "seed") for r in rows)
     n_tests = sum(r["type"] == "test" for r in rows)
     bad = [r for r in rows if r["status"] not in ("success", "pass")]
-    return p.returncode == 0 and not bad, f"{n_models} models/seeds built, {n_tests} data tests, {len(bad)} failures", rows
+    return (
+        p.returncode == 0 and not bad,
+        f"{n_models} models/seeds built, {n_tests} data tests, {len(bad)} failures",
+        rows,
+    )
 
 
 def check_ml(env: dict):
@@ -147,11 +187,22 @@ def check_api(base: str):
         r = httpx.get(base + path, timeout=60)
         ms = round(1000 * (time.time() - t0))
         body = r.json() if r.headers.get("content-type", "").startswith("application/json") else None
-        n = len(body) if isinstance(body, list) else len(body.get("x", body.get("features", []))) if isinstance(body, dict) else 0
+        n = (
+            len(body)
+            if isinstance(body, list)
+            else len(body.get("x", body.get("features", [])))
+            if isinstance(body, dict)
+            else 0
+        )
         ok = r.status_code == 200 and (n > 0 or path in ("/health",) or isinstance(body, dict))
         bad += not ok
         rows.append({"endpoint": path, "status": r.status_code, "items": n, "ms": ms, "ok": ok})
-    return bad == 0, f"{len(ENDPOINTS) - bad}/{len(ENDPOINTS)} endpoints OK, median {sorted(r['ms'] for r in rows)[len(rows)//2]} ms", rows
+    return (
+        bad == 0,
+        f"{len(ENDPOINTS) - bad}/{len(ENDPOINTS)} endpoints OK, median "
+        f"{sorted(r['ms'] for r in rows)[len(rows) // 2]} ms",
+        rows,
+    )
 
 
 def check_dashboard(base: str):
@@ -178,7 +229,9 @@ def check_dashboard(base: str):
         "market pressure": lambda th: A.pressure(A.DEFAULT_CITIES, "12M", slots, th),
         "map: affordability": lambda th: A.kreis_map("afford", "total", th, None),
         "map: supply vs demand": lambda th: A.kreis_map("sd", "total", th, None),
-        "map: rent by size band": lambda th: A.kreis_map("rent", "size:WFL040B059", th, {"points": [{"location": "09162"}]}),
+        "map: rent by size band": lambda th: A.kreis_map(
+            "rent", "size:WFL040B059", th, {"points": [{"location": "09162"}]}
+        ),
         "Kreis detail (rooms)": lambda th: A.kreis_detail(None, th, "total"),
         "Kreis detail (sizes)": lambda th: A.kreis_detail(None, th, "size:WFL060B079"),
         "supply & demand tab": lambda th: A.supply_demand(slots, th),
@@ -253,19 +306,44 @@ def check_web(warehouse_url: str):
 
     rows = []
     try:
-        pages = ["/", "/cities", "/cities/berlin", "/cities/muenchen", "/cities/bielefeld", "/map", "/supply-demand",
-                 "/affordability", "/methodology", "/data/meta.json", "/data/grid/11000.json", "/cities/nowhere"]
+        pages = [
+            "/",
+            "/cities",
+            "/cities/berlin",
+            "/cities/muenchen",
+            "/cities/bielefeld",
+            "/map",
+            "/supply-demand",
+            "/affordability",
+            "/methodology",
+            "/data/meta.json",
+            "/data/grid/11000.json",
+            "/cities/nowhere",
+        ]
         for path in pages:
             t0 = time.time()
             r = httpx.get(f"http://127.0.0.1:{port}{path}", timeout=30)
             expected = 404 if path.endswith("nowhere") else 200
-            rows.append({"page": path, "status": r.status_code, "kb": round(len(r.content) / 1024),
-                         "ms": round(1000 * (time.time() - t0)), "ok": r.status_code == expected})
+            rows.append(
+                {
+                    "page": path,
+                    "status": r.status_code,
+                    "kb": round(len(r.content) / 1024),
+                    "ms": round(1000 * (time.time() - t0)),
+                    "ok": r.status_code == expected,
+                }
+            )
     finally:
         srv.shutdown()
     bad = sum(not r["ok"] for r in rows)
-    return bad == 0, (f"snapshot {meta['files']} files ({meta['bytes'] / 1e6:.1f} MB), static build OK, "
-                      f"{len(rows) - bad}/{len(rows)} URLs served as expected"), rows
+    return (
+        bad == 0,
+        (
+            f"snapshot {meta['files']} files ({meta['bytes'] / 1e6:.1f} MB), static build OK, "
+            f"{len(rows) - bad}/{len(rows)} URLs served as expected"
+        ),
+        rows,
+    )
 
 
 def check_postgres(pg_url: str):
@@ -273,8 +351,13 @@ def check_postgres(pg_url: str):
     from sqlalchemy.engine import make_url
 
     u = make_url(pg_url)
-    env.update(PGHOST=u.host or "localhost", PGPORT=str(u.port or 5432), PGUSER=u.username or "",
-               PGPASSWORD=u.password or "", PGDATABASE=u.database or "")
+    env.update(
+        PGHOST=u.host or "localhost",
+        PGPORT=str(u.port or 5432),
+        PGUSER=u.username or "",
+        PGPASSWORD=u.password or "",
+        PGDATABASE=u.database or "",
+    )
     from immodash_ingest.pipeline import run as ingest
 
     ingest(offline=True, warehouse_url=pg_url)
@@ -293,7 +376,7 @@ def main() -> int:
     ap.add_argument("--no-report", action="store_true")
     args = ap.parse_args()
 
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     tmp = Path(tempfile.mkdtemp(prefix="immodash-verify-"))
     db = tmp / "verify.duckdb"
     url = f"duckdb:///{db}"
@@ -318,7 +401,7 @@ def main() -> int:
     result = {
         "ok": ok,
         "started_at": started.isoformat(timespec="seconds"),
-        "seconds": round((datetime.now(timezone.utc) - started).total_seconds(), 1),
+        "seconds": round((datetime.now(UTC) - started).total_seconds(), 1),
         "python": sys.version.split()[0],
         "checks": [asdict(c) for c in checks],
     }

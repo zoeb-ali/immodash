@@ -27,7 +27,7 @@ export function PremiumChart({ rows, highlight }: {
   const [all, setAll] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
   const { lang, t, f, to } = useI18n();
-  const { eur, num } = f;
+  const { eur } = f;
   const sorted = [...rows].sort((a, b) => b.premium - a.premium);
   const big = new Set([...rows].sort((a, b) => (b.population ?? 0) - (a.population ?? 0)).slice(0, 14).map((r) => r.city));
   const shown = all ? sorted : sorted.filter((r) => big.has(r.city) || r.city === highlight);
@@ -44,7 +44,7 @@ export function PremiumChart({ rows, highlight }: {
         <span className="key"><span className="sw" style={{ background: "var(--s3)", borderRadius: 6 }} /> {t("Existing tenants, 2022 average", "Bestandsmieter, Schnitt 2022")}</span>
         <span className="key"><span className="sw" style={{ background: "var(--s2)", borderRadius: 6 }} /> {t("New lease today (median asking rent)", "Neuvertrag heute (mittlere Angebotsmiete)")}</span>
       </div>
-      <svg className="svgchart" width={w} height={H} role="img" aria-label={t("Existing contract rent in 2022 versus asking rent today, per city", "Bestandsmiete 2022 und Angebotsmiete heute, je Stadt")}>
+      <svg className="svgchart" width={w} height={H} role="group" aria-label={t("Existing contract rent in 2022 versus asking rent today, per city", "Bestandsmiete 2022 und Angebotsmiete heute, je Stadt")}>
         {ticks.map((tv) => (
           <g key={tv}>
             <line x1={x(tv)} x2={x(tv)} y1={top - 6} y2={H - 6} stroke="var(--grid)" />
@@ -78,7 +78,7 @@ export function PremiumChart({ rows, highlight }: {
 
 /** Forecast ranges: most likely 12-month change with its 80% interval, per city. */
 export function OutlookChart({ rows, highlight }: {
-  rows: (Row & { now: number; p10: number; p50: number; p90: number })[]; highlight?: string;
+  rows: (Row & { now: number; p10: number; p50: number; p90: number; disagree?: boolean })[]; highlight?: string;
 }) {
   const [ref, w] = useWidth<HTMLDivElement>(900);
   const [all, setAll] = useState(false);
@@ -103,7 +103,7 @@ export function OutlookChart({ rows, highlight }: {
         <span className="key"><span className="sw" style={{ background: "var(--s1)", borderRadius: 6 }} /> {t("Most likely change", "Wahrscheinlichste Veränderung")}</span>
         <span className="key"><span className="sw" style={{ background: "color-mix(in srgb, var(--s1) 30%, transparent)", width: 22 }} /> {t("80% range", "80-%-Spanne")}</span>
       </div>
-      <svg className="svgchart" width={w} height={H} role="img" aria-label={t("Forecast change in asking rent over the next 12 months, per city", "Prognostizierte Veränderung der Angebotsmiete in 12 Monaten, je Stadt")}>
+      <svg className="svgchart" width={w} height={H} role="group" aria-label={t("Forecast change in asking rent 12 months ahead, per city", "Prognostizierte Veränderung der Angebotsmiete in 12 Monaten, je Stadt")}>
         {ticks.map((tv) => (
           <g key={tv}>
             <line x1={x(tv)} x2={x(tv)} y1={top - 6} y2={H - 6} stroke={tv === 0 ? "var(--muted)" : "var(--grid)"} />
@@ -116,7 +116,10 @@ export function OutlookChart({ rows, highlight }: {
             <g key={r.city} onMouseEnter={() => setHover(r.city)} onMouseLeave={() => setHover(null)}>
               <rect x={0} y={y - rowH / 2} width={w} height={rowH} fill={hl ? "var(--surface-2)" : "transparent"} />
               <Link href={to(`/cities/${r.slug}`)}>
-                <text x={labelW - 10} y={y + 4} textAnchor="end" fontSize={13} fontWeight={hl ? 700 : 500} fill="var(--ink)">{cityName(lang, r)}</text>
+                <text x={labelW - 10} y={y + 4} textAnchor="end" fontSize={13} fontWeight={hl ? 700 : 500} fill="var(--ink)">
+                  {r.disagree && <tspan fill="var(--warn)">↯ </tspan>}{cityName(lang, r)}
+                  {r.disagree && <title>{t("Forecast points against this city's last 12 months", "Prognose zeigt gegen den Trend der letzten 12 Monate")}</title>}
+                </text>
               </Link>
               <rect x={x(r.lo)} y={y - 5} width={Math.max(2, x(r.hi) - x(r.lo))} height={10} rx={5}
                 fill="color-mix(in srgb, var(--s1) 30%, transparent)" />

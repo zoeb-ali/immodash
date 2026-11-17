@@ -11,7 +11,7 @@ immodash:
       host: "{{ env_var('PGHOST', 'localhost') }}"
       port: "{{ env_var('PGPORT', '5432') | int }}"
       user: "{{ env_var('PGUSER', 'immodash') }}"
-      password: "{{ env_var('PGPASSWORD', 'immodash') }}"
+      password: "{{ env_var('PGPASSWORD') }}"  # no fallback: a missing password must fail, not use a default (SEC-9)
       dbname: "{{ env_var('PGDATABASE', 'immodash') }}"
       schema: public
       threads: 4

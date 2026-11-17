@@ -1,23 +1,59 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "immodash"
-version = "0.1.0"
-description = "German real estate market intelligence platform"
-requires-python = ">=3.10"
+version = "1.5.0"  # single version for Python, dbt, API and web; scripts/check_versions.py keeps them in sync
+description = "German rental market intelligence platform"
+requires-python = ">=3.11"  # CI, Docker and the weekly job all run 3.11
+readme = "README.md"
+license = { text = "MIT" }
+# Runtime dependencies are declared in requirements.txt and locked (with hashes) in requirements.lock.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "ruff", "mypy", "pyyaml", "pip-audit", "pre-commit"]
+
+[tool.setuptools]
+package-dir = { "" = ".", "immodash_ingest" = "ingestion/immodash_ingest" }
+packages = ["api", "ml", "dashboard", "flows", "immodash_ingest", "immodash_ingest.sources"]
 
 [tool.ruff]
-line-length = 140
-target-version = "py310"
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "web", "dbt/target", "dbt/dbt_packages"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["B008"]  # FastAPI's Query(...) defaults are idiomatic
 
 [tool.ruff.lint.isort]
-known-first-party = ["immodash_ingest", "api", "dashboard"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = [".", "ingestion"]
+known-first-party = ["immodash_ingest", "api", "dashboard", "ml", "flows"]
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/report.py" = ["E501"]  # long lines are HTML/CSS template text
+"dashboard/*.py" = ["E501"]     # Plotly/Dash layout literals; scoped as a local analyst tool (docs/adr/0010)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "quality: model-quality checks on real data; run by the weekly refresh gate, not by code CI",
+  "slow: needs the full warehouse built by the session fixture",
+]
+addopts = "-m 'not quality'"
+
+[tool.coverage.run]
+source = ["api", "ml", "immodash_ingest"]
+omit = ["*/__main__.py"]
+
+[tool.coverage.report]
+show_missing = false
+skip_empty = true
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = false
+files = ["api", "ml", "ingestion/immodash_ingest"]

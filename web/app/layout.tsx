@@ -6,10 +6,11 @@ import { Nav } from "@/components/Nav";
 import { data } from "@/lib/data";
 import { Footer } from "@/components/Footer";
 import { SkipLink } from "@/components/SkipLink";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: { default: "ImmoDash · What renting in Germany really costs", template: "%s · ImmoDash" },
-  metadataBase: new URL("https://immodash-virid.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     title: "ImmoDash: what renting in Germany really costs", type: "website", locale: "en_GB", siteName: "ImmoDash",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "ImmoDash: map of Germany's 400 districts coloured by asking rent" }],

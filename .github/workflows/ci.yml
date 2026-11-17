@@ -1,3 +1,6 @@
+# Code CI: lint, types, tests, both warehouses, the website and its accessibility, on every push and PR.
+# Model-quality checks on real data are not here (they depend on upstream data, not on code); they gate the
+# weekly refresh instead (audit SWE-3).
 name: ci
 
 on:
@@ -5,30 +8,50 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read   # SEC-11: read-only token for all CI jobs
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: ${{ github.workspace }}/ingestion
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements-dev.txt
-      - name: Lint
-        run: ruff check .
+          cache-dependency-path: requirements-dev.lock
+      - name: Install locked dependencies (hashes verified)
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
+      - name: Lint and formatting
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Type check
+        run: mypy
+      - name: Versions agree (pyproject, dbt, web, changelog)
+        run: python scripts/check_versions.py
+      - name: Documentation links resolve
+        run: python scripts/check_links.py
+      - name: Known vulnerabilities in Python dependencies
+        run: pip-audit -r requirements-dev.lock --require-hashes --disable-pip
       - name: Ingest committed raw data into DuckDB (bronze)
         run: python -m immodash_ingest --offline
-      - name: dbt build (silver + gold + data tests)
+      - name: dbt build (silver + gold + data tests; data-recency tests run in the weekly refresh)
         working-directory: dbt
-        run: dbt build --profiles-dir .
-      - name: Unit, API contract and ML tests
-        run: pytest -q
+        run: dbt build --profiles-dir . --exclude tag:freshness
+      - name: Unit, API contract and pipeline tests with coverage
+        run: pytest -q --cov --cov-report=term --cov-fail-under=80
       - name: End-to-end verification report
         run: python scripts/verify.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: verification-report
@@ -36,57 +59,98 @@ jobs:
 
   postgres:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
         env:
           POSTGRES_USER: immodash
-          POSTGRES_PASSWORD: immodash
+          POSTGRES_PASSWORD: ci-only-password
           POSTGRES_DB: immodash
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U immodash" --health-interval 5s --health-retries 10
     env:
-      PYTHONPATH: ${{ github.workspace }}/ingestion
-      WAREHOUSE_URL: postgresql+psycopg://immodash:immodash@localhost:5432/immodash
+      WAREHOUSE_URL: postgresql+psycopg://immodash:ci-only-password@localhost:5432/immodash
       DBT_TARGET: prod
+      PGPASSWORD: ci-only-password
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt
+          cache-dependency-path: requirements.lock
+      - run: |
+          pip install --require-hashes -r requirements.lock
+          pip install --no-deps -e .
       - run: python -m immodash_ingest --offline
       - working-directory: dbt
-        run: dbt build --profiles-dir .
+        run: dbt build --profiles-dir . --exclude tag:freshness
       - run: python -m ml
 
   web:
     runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/ingestion
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
           cache: pip
-      - uses: actions/setup-node@v4
+          cache-dependency-path: requirements.lock
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: pip install -r requirements.txt
-      - name: Build warehouse and export the static snapshot
+      - run: |
+          pip install --require-hashes -r requirements.lock
+          pip install --no-deps -e .
+      - name: Build warehouse and export a fresh snapshot (checks the export runs)
         run: |
           python -m immodash_ingest --offline
-          (cd dbt && dbt build --profiles-dir . --quiet)
+          (cd dbt && dbt build --profiles-dir . --quiet --exclude tag:freshness)
           python -m ml
           python scripts/export_static.py --no-llm --out /tmp/snapshot
-      - name: Type-check and build the static site (committed snapshot)
+          python scripts/validate_snapshot.py --dir /tmp/snapshot
+      - name: Validate the committed snapshot the site is built from
+        run: python scripts/validate_snapshot.py
+      - name: Install, audit, lint, type-check and build the site
         working-directory: web
         run: |
           npm ci
+          npm audit --omit=dev --audit-level=high
           npm run lint
           npm run build
+      - name: Smoke and accessibility tests (Playwright + axe) on every route
+        working-directory: web
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+      - name: Lighthouse CI (desktop and mobile budgets)
+        working-directory: web
+        run: npm run lhci
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: web-test-results
+          path: |
+            web/test-results/
+            web/.lighthouseci/
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Build every image target (slim API, dashboard, full pipeline)
+        run: |
+          for target in api dashboard pipeline; do
+            docker build --target "$target" -t "immodash-$target" .
+          done
+          docker images | grep immodash
+      - name: The API image contains no private notes, secrets or tests
+        run: |
+          docker run --rm --entrypoint sh immodash-api -c 'test ! -e /app/.private && test ! -e /app/.env && test ! -e /app/tests && test ! -e /app/web'
+          docker run --rm --entrypoint python immodash-api -c "import api.main; print('api imports ok')"

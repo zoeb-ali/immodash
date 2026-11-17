@@ -22,19 +22,30 @@ export type PressurePoint = {
 export type Forecast = {
   city: string; city_en: string; origin_month: string; horizon_months: number; target_month: string;
   median_rent_now: number; p10_rent_sqm: number; p50_rent_sqm: number; p90_rent_sqm: number; change_p50_pct: number;
-  model_version: string;
+  base_method: string; index_change_12m_pct: number | null; disagrees_with_trend: boolean; model_version: string;
 };
 export type Backtest = {
-  horizon_months: number; model: string; mape_pct: number; mae_eur_sqm: number; coverage_80_pct: number | null;
-  n_forecasts: number; n_origins: number;
+  horizon_months: number; model: string; mape_pct: number; bias_pct: number; mae_eur_sqm: number;
+  direction_accuracy_pct: number; coverage_80_pct: number | null; n_forecasts: number; n_origins: number; n_falls: number;
+  first_origin: string; last_origin: string;
+};
+export type BacktestCity = Omit<Backtest, "first_origin" | "last_origin"> & { city: string };
+export type Freshness = {
+  source_key: string; dataset: string; data_through: string; cadence: string; warn_after_days: number | null;
+  error_after_days: number | null; age_days: number; is_late: boolean; is_stale: boolean;
+};
+export type EstimateValidation = {
+  city: string; ags: string; method: string; actual_asking_rent_eur_sqm: number; estimated_asking_rent_eur_sqm: number;
+  error_pct: number;
 };
 export type Anomaly = {
   city: string; city_en: string; period_date: string; median_rent_sqm: number; mom_pct: number; market_mom_pct: number;
   excess_pct: number; robust_z: number; is_anomaly: boolean; direction: "spike" | "drop"; severity: string;
+  persistence: "persisted" | "reversed" | "pending"; signal: string;
 };
 export type Summary = {
-  city: string; text: string; generated_by: string; grounding_rejected_numbers: string[]; generated_at: string;
-  facts: Record<string, unknown>;
+  city: string; text: string; text_de: string; generated_by: string; grounding_rejected_numbers: string[];
+  generated_at: string; facts_hash: string; facts: Record<string, unknown>;
 };
 export type KreisAffordability = {
   ags: string; kreis_name: string; land_name: string | null; is_urban_district: boolean; rent_eur_sqm: number;
@@ -51,6 +62,7 @@ export type KreisSupplyDemand = {
 export type KreisAskingRent = {
   ags: string; kreis_name: string; rooms: string; rent_eur_sqm: number; national_mean_rent_eur_sqm: number;
   estimated_asking_rent_eur_sqm: number; asking_premium: number; estimate_method: string;
+  is_modelled: boolean; estimate_low_eur_sqm: number | null; estimate_high_eur_sqm: number | null;
 };
 export type FinderResult = {
   ags: string; kreis_name: string; land_name: string | null; rent_eur_sqm: number;
@@ -68,7 +80,9 @@ export type Bezirk = {
   city: string; bezirk_code: string; bezirk_name: string; rent_eur_sqm: number; city_rent_eur_sqm: number;
   vs_city_pct: number; rank_in_city: number;
 };
-export type Source = { key: string; publisher: string; licence: string; url: string | null };
+export type Source = {
+  key: string; publisher: string; licence: string; url: string | null; licence_url: string | null; release_note: string;
+};
 export type KreisGeo = {
   type: "FeatureCollection";
   features: { type: "Feature"; id: string; properties: { ags: string; name: string }; geometry: Geometry }[];

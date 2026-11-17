@@ -7,7 +7,9 @@ How changes are made in ImmoDash, so anyone picking it up works the same way. Fo
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-dev.lock   # locked, hash-checked versions
+pip install --no-deps -e .                              # the project itself (api, ml, immodash_ingest, ...)
+pre-commit install                                      # ruff, version and link checks before each commit
 make demo                      # builds the warehouse from data/raw and starts the dashboard
 cd web && npm install && npm run dev   # website on http://localhost:3000
 ```
@@ -36,6 +38,16 @@ cd web && npm install && npm run dev   # website on http://localhost:3000
 - **Pushes** come from the maintainer's own terminal; commit, then `git pull --rebase`, then push (the weekly
   bot commits data on Mondays).
 
+## Branches and reviews
+
+Work on a short-lived branch and open a pull request, even alone: CI runs on it and Vercel builds a preview.
+Merge when both are green. Keep commits small; one change per commit.
+
+## Dependencies
+
+Add a package to `requirements.txt` (runtime) or `requirements-dev.txt`, then regenerate the lock files
+(`uv pip compile ... --generate-hashes`, see `docs/RUNBOOK.md`). Never install unpinned packages in CI.
+
 ## Commit messages
 
 Plain imperative sentence saying what changed and why, under about 72 characters, for example
@@ -45,10 +57,12 @@ are the only automated ones.
 ## Before you push
 
 ```bash
-ruff check .
-make test                       # pytest (builds a throwaway warehouse)
+ruff check . && ruff format --check . && mypy
+pytest tests/unit -q            # fast unit tests, seconds
+make test                       # full pytest (builds a throwaway warehouse)
 make docs-check                 # every column defined
-cd web && npx tsc --noEmit && npm run build
+python scripts/check_versions.py && python scripts/check_links.py
+cd web && npm run lint && npm run build && npm run test:e2e
 ```
 
 `make verify` runs the full end-to-end check and writes `reports/verification_report.html`.

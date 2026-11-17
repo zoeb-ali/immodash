@@ -1,7 +1,11 @@
-# Weekly data refresh for the public site (free: GitHub Actions + Vercel static hosting).
-#   download sources -> bronze -> dbt build (all data tests must pass) -> forecasts/anomalies
-#   -> export the API as a static JSON snapshot -> commit -> Vercel redeploys on the push.
-# If any step fails, nothing is committed and the live site keeps serving the last good snapshot.
+# Weekly data refresh for the public site.
+#   build job (read-only token):  download sources -> bronze (health checks) -> dbt build incl. data-recency tests
+#     -> forecasts/anomalies (history recorded) -> model-quality gate -> export snapshot -> validate it
+#     -> build the website from it.
+#   publish job (write token, no secrets, no third-party code): commit the checked artefact to main;
+#     Vercel deploys the push.
+# If any step fails nothing is committed and the live site keeps serving the last good snapshot.
+# Why not a pull request: pull requests opened with GITHUB_TOKEN do not trigger CI, so the checks run here.
 name: refresh-site
 
 on:
@@ -10,45 +14,101 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: refresh-site
   cancel-in-progress: false
 
 jobs:
-  refresh:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
+    permissions:
+      contents: read
     env:
-      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/ingestion
       DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}       # optional: LLM-written market summaries
-      ZENSUS_API_TOKEN: ${{ secrets.ZENSUS_API_TOKEN }} # optional: refresh Zensus tables via API
+      IMMODASH_RECORD_HISTORY: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt
-      - name: Ingest (downloads, falls back to committed raw files)
+          cache-dependency-path: requirements-dev.lock
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies (hashes verified)
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
+      - name: Ingest (records every fetch; fails after repeated fallbacks or a large row drop)
+        env:
+          ZENSUS_API_TOKEN: ${{ secrets.ZENSUS_API_TOKEN }}  # optional: refresh Zensus tables via API
         run: python -m immodash_ingest
-      - name: dbt build (silver + gold + data tests)
+      - name: dbt build (silver + gold + data tests + data-recency tests)
         working-directory: dbt
         run: dbt build
       - name: Forecasts and anomalies
         run: python -m ml
+      - name: Model-quality gate (backtest must beat the baselines with honest intervals)
+        env:
+          IMMODASH_TEST_WAREHOUSE: duckdb:///${{ github.workspace }}/warehouse/immodash.duckdb
+        run: pytest -q -m quality
       - name: Export static snapshot for the site
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}  # optional: LLM-written market summaries
         run: python scripts/export_static.py
+      - name: Validate the snapshot (schemas, counts, sanity bounds)
+        run: python scripts/validate_snapshot.py --max-age-days 1
+      - name: Build the website from the new snapshot
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: refreshed-data
+          path: |
+            data/raw/
+            data/history/
+            web/public/data/
+          retention-days: 14
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write   # the only job with write access; it runs no project code and holds no API secrets
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 20   # enough history for the rebase-and-retry below
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: refreshed-data
+          path: .
       - name: Commit refreshed data
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/raw web/public/data
+          git add data/raw data/history web/public/data
           if git diff --cached --quiet; then
             echo "No changes."
           else
             git commit -m "data: weekly refresh $(date -u +%Y-%m-%d)"
-            git push
+            # OPS-2: the 12 Oct 2026 run failed at this step, most likely because main moved during the run
+            # (a push rejected as non-fast-forward). Rebase onto the latest main and retry a few times.
+            for attempt in 1 2 3; do
+              if git push; then exit 0; fi
+              echo "::warning::push rejected (attempt $attempt), rebasing onto origin/main"
+              git pull --rebase origin "${GITHUB_REF_NAME}"
+              sleep $((attempt * 10))
+            done
+            echo "::error::could not push the refreshed data after 3 attempts"
+            exit 1
           fi

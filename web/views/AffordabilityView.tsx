@@ -33,7 +33,7 @@ export function AffordabilityView({ lang }: { lang: Lang }) {
           <>Budget und Wohnungsgröße einstellen. Die Karte zeigt jeden <Term k="kreis">Kreis</Term>, in dem eine solche Wohnung heute
           voraussichtlich in diesem Rahmen inseriert wird.</>)}
         facts={<>
-          <Stat label={t("Typical district", "Typischer Kreis")} value={pct(med, 1)}
+          <Stat label={t("Rent burden, typical district (2022 census rents)", "Mietbelastung, typischer Kreis (Zensusmieten 2022)")} value={pct(med, 1)}
             say={t(<>Share of two residents&apos; net income that rent for 60 m² takes, at 2022 census rents.</>,
               <>Anteil am Nettoeinkommen zweier Einwohner, den die Miete für 60 m² zu Zensusmieten von 2022 ausmacht.</>)} />
           <Stat label={`${t("Least affordable", "Am wenigsten bezahlbar")}: ${short(worst[0].kreis_name)}`} value={pct(worst[0].rent_burden_pct, 1)}
@@ -70,17 +70,17 @@ export function AffordabilityView({ lang }: { lang: Lang }) {
       <section className="section band" style={{ paddingBottom: 72, marginTop: 64 }}>
         <div className="wrap">
           <Head title={t("Where rent takes the biggest bite out of local pay", "Wo die Miete den größten Teil des Einkommens frisst")}>
-            {t(<>A cheap rent is not affordable if wages are low. The <Term k="rent-burden" /> combines both: census rent for 60 m² as a share of
+            {t(<>A cheap rent is not affordable if wages are low. The <Term k="rent-burden-census" /> combines both: census rent for 60 m² as a share of
               two average residents&apos; net income. Across all 400 districts the middle value is <b style={{ color: "var(--ink)" }}>{pct(med, 1)}</b>.</>,
-              <>Eine günstige Miete ist nicht bezahlbar, wenn die Löhne niedrig sind. Die <Term k="rent-burden" /> verbindet beides: Zensusmiete für 60 m² als Anteil
+              <>Eine günstige Miete ist nicht bezahlbar, wenn die Löhne niedrig sind. Die <Term k="rent-burden-census" /> verbindet beides: Zensusmiete für 60 m² als Anteil
               am Nettoeinkommen zweier durchschnittlicher Einwohner. Über alle 400 Kreise liegt der mittlere Wert bei <b style={{ color: "var(--ink)" }}>{pct(med, 1)}</b>.</>)}
           </Head>
           <div className="split even">
-            <Figure title={t("Highest rent burden", "Höchste Mietbelastung")}
+            <Figure title={t("Highest rent burden (2022 census rents)", "Höchste Mietbelastung (Zensusmieten 2022)")}
               sub={t("Rent for 60 m² as a share of two residents' net income, 2022.", "Miete für 60 m² als Anteil am Nettoeinkommen zweier Einwohner, 2022.")} source={src}>
               <RankBars rows={bar(worst)} max={Math.max(...worst.map((w) => w.rent_burden_pct))} tone="bad" fmt="pct" lang={lang} />
             </Figure>
-            <Figure title={t("Lowest rent burden", "Niedrigste Mietbelastung")}
+            <Figure title={t("Lowest rent burden (2022 census rents)", "Niedrigste Mietbelastung (Zensusmieten 2022)")}
               sub={t("Same measure, the twelve most affordable districts.", "Dasselbe Maß, die zwölf bezahlbarsten Kreise.")} source={src}>
               <RankBars rows={bar(best)} max={Math.max(...worst.map((w) => w.rent_burden_pct))} tone="good" fmt="pct" lang={lang} />
             </Figure>

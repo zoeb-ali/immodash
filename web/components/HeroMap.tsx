@@ -1,23 +1,16 @@
-import { HERO_H, HERO_W, type HeroPath } from "@/lib/heroMap";
 import { HeroMapHover } from "./HeroMapHover";
 import { T } from "./T";
 import { HeroMapLink } from "./HeroMapLink";
 
 /** Hero visual: every district coloured by estimated asking rent (real data, not decoration).
- *  Rendered on the server; only the hover tooltip runs in the browser. */
-export function HeroMap({ paths, lo, hi, rents, names, lang = "en" }: {
-  paths: HeroPath[]; lo: number; hi: number; rents: Record<string, number>; names: Record<string, string>; lang?: "en" | "de";
+ *  The map itself is a static SVG file per theme (FE-2); the tooltip layer loads on first hover. */
+export function HeroMap({ lo, hi, rents, names, lang = "en" }: {
+  lo: number; hi: number; rents: Record<string, number>; names: Record<string, string>; lang?: "en" | "de";
 }) {
+  const alt = lang === "de" ? "Karte der 400 Kreise Deutschlands nach geschätzter Angebotsmiete" : "Map of Germany's 400 districts coloured by estimated asking rent";
   return (
     <div className="hero-visual">
-      <HeroMapHover rents={rents} names={names}>
-        <svg className="hero-map" viewBox={`0 0 ${HERO_W} ${HERO_H}`} style={{ width: "100%", display: "block" }} role="img"
-          aria-label={lang === "de" ? "Karte der 400 Kreise Deutschlands nach geschätzter Angebotsmiete" : "Map of Germany's 400 districts coloured by estimated asking rent"}>
-          {paths.map((p) => (
-            <path key={p.ags} className="k" data-ags={p.ags} d={p.d} style={{ fill: p.fill, ["--rank" as string]: p.rank }} />
-          ))}
-        </svg>
-      </HeroMapHover>
+      <HeroMapHover rents={rents} names={names} alt={alt} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
         <div className="legend">
           <span>{lo.toFixed(0)} €</span>

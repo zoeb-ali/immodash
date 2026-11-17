@@ -89,7 +89,9 @@ export function RentCheck({ cities, initialCity = "Berlin", compact = false }: {
           <div className="meter" role="img" aria-label={t(`Rent would take ${Math.round(share * 100)} percent of income`, `Die Miete würde ${Math.round(share * 100)} Prozent des Einkommens nehmen`)}>
             <span className="pin" style={{ left: `${Math.min(100, share * 100)}%` }} />
           </div>
-          <div className="meter-scale">{[0, 30, 40, 100].map((x) => <span key={x}>{f.pct(x, 0)}</span>)}</div>
+          {/* UX-3: each label sits at its true position on the bar (the colours change at 30 % and 40 %) */}
+          <div className="meter-scale" aria-hidden>{[0, 30, 40, 100].map((x) => (
+            <span key={x} style={{ left: `${x}%` }} className={x === 0 ? "first" : x === 100 ? "last" : undefined}>{f.pct(x, 0)}</span>))}</div>
           <p className="rc-say">
             {t("That is", "Das liegt")} {v.say}.<Cite id="lebuhn2017" />
             {c.f12 != null && t(<> If the trend holds, the same flat would be listed at about <b>{euro0(c.f12 * size)}</b> a year from now

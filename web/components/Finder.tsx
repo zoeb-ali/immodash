@@ -44,7 +44,8 @@ export function Finder() {
   const [urban, setUrban] = useState<"all" | "city" | "rural">("all");
   const [sel, setSel] = useState<string | null>(null);
   const [hover, setHover] = useState<{ ags: string; x: number; y: number } | null>(null);
-  const [src, setSrc] = useState<{ rooms: KreisAskingRent[]; sizes: SizeRow[]; aff: KreisAffordability[]; range: Range[]; plz: Postcode[] } | null>(null);
+  const [src, setSrc] = useState<{ rooms: KreisAskingRent[]; sizes: SizeRow[]; aff: KreisAffordability[]; range: Range[]; plz: Postcode[];
+    val: { error_pct: number }[] } | null>(null);
   const [plzQuery, setPlzQuery] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const paths = useKreisPaths();
@@ -57,7 +58,8 @@ export function Finder() {
       loadJson<KreisAffordability[]>("kreise-affordability.json"),
       loadJson<Range[]>("kreise-rent-range.json").catch(() => [] as Range[]),
       loadJson<Postcode[]>("postcodes.json").catch(() => [] as Postcode[]),
-    ]).then(([rooms, sizes, aff, range, plz]) => setSrc({ rooms, sizes, aff, range, plz })).catch((e) => setErr(String(e)));
+      loadJson<{ error_pct: number }[]>("estimate-validation.json").catch(() => [] as { error_pct: number }[]),
+    ]).then(([rooms, sizes, aff, range, plz, val]) => setSrc({ rooms, sizes, aff, range, plz, val })).catch((e) => setErr(String(e)));
   }, []);
 
   const segment = SEGMENTS.find((s) => s.value === (seg === "auto" ? sizeToSeg(sqm) : seg))!;
@@ -84,11 +86,10 @@ export function Finder() {
     return { all, hits, pool };
   }, [src, segment, sqm, budget, land, urban]);
   const hitSet = useMemo(() => new Set(hits.map((h) => h.ags)), [hits]);
-  const color = useMemo(() => {
-    if (!tk["--q1"]) return () => "transparent";
-    const s = scaleLinear<string>().domain([0, 100, 250, 450, 700]).range(["--q1", "--q2", "--q3", "--q4", "--q5"].map((k) => tk[k])).clamp(true);
-    return (ags: string) => (hitSet.has(ags) ? s(all.get(ags)!.headroom) : tk["--context"]);
-  }, [tk, hitSet, all]);
+  const q1 = tk["--q1"], q2 = tk["--q2"], q3 = tk["--q3"], q4 = tk["--q4"], q5 = tk["--q5"], ctx = tk["--context"];
+  // cheap to rebuild on every render, so no manual memoisation (lets the React Compiler optimise the component)
+  const headroomScale = scaleLinear<string>().domain([0, 100, 250, 450, 700]).range([q1, q2, q3, q4, q5]).clamp(true);
+  const color = (ags: string) => (!q1 ? "transparent" : hitSet.has(ags) ? headroomScale(all.get(ags)!.headroom) : ctx);
 
   const selHit = sel ? all.get(sel) : null;
   const hv = hover ? all.get(hover.ags) : null;
@@ -104,6 +105,11 @@ export function Finder() {
   useEffect(() => setPlzQuery(""), [sel]);
   const plzShown = postcodes.filter((p) => !plzQuery || p.plz.startsWith(plzQuery.trim()));
   const plzFit = postcodes.filter((p) => p.rent <= budget).length;
+  // ML-2 / UX-2: how far the estimation rule missed on the cities where the real asking rent is known
+  const valErr = useMemo(() => {
+    const e = (src?.val ?? []).map((v) => Math.abs(v.error_pct)).sort((a, b) => a - b);
+    return e.length ? { med: e[Math.floor(e.length / 2)], p80: e[Math.floor(e.length * 0.8)] } : null;
+  }, [src]);
 
   return (
     <div>
@@ -229,7 +235,7 @@ export function Finder() {
                     <input type="search" inputMode="numeric" maxLength={5} placeholder={t("Your postcode, e.g. 33602", "Ihre PLZ, z. B. 33602")} aria-label={t("Filter by postcode", "Nach Postleitzahl filtern")}
                       value={plzQuery} onChange={(e) => setPlzQuery(e.target.value.replace(/\D/g, ""))} />
                   </div>
-                  <div className="tablewrap" style={{ maxHeight: 260, overflowY: "auto" }}>
+                  <div className="tablewrap" tabIndex={0} style={{ maxHeight: 260, overflowY: "auto" }}>
                     <table>
                       <thead><tr><th>{t("Postcode", "PLZ")}</th><th className="num">{t("Est. rent", "Gesch. Miete")}</th><th className="num">{t("vs. budget", "ggü. Budget")}</th></tr></thead>
                       <tbody>
@@ -252,14 +258,17 @@ export function Finder() {
                   </p>
                 </div>
               )}
-              <p className="note" style={{ marginTop: 8 }}>{t("Estimate: census rent for this flat type, raised to today's level", "Schätzung: Zensusmiete für diesen Wohnungstyp, auf das heutige Niveau angehoben")} ({METHOD[selHit.method]?.[li] ?? t("model estimate", "Modellschätzung")}). {t("Real listings vary.", "Echte Inserate weichen ab.")}</p>
+              <p className="note" style={{ marginTop: 8 }}>{t("Estimate: census rent for this flat type, raised to today's level", "Schätzung: Zensusmiete für diesen Wohnungstyp, auf das heutige Niveau angehoben")} ({METHOD[selHit.method]?.[li] ?? t("model estimate", "Modellschätzung")}). {t("Real listings vary.", "Echte Inserate weichen ab.")}
+                {selHit.method !== "greix_city" && valErr && <> <b>{t("Modelled, not measured:", "Modelliert, nicht gemessen:")}</b>{" "}
+                  {t(`tested on the 37 cities with listing data, this rule missed the real asking rent by ${f.pct(valErr.med, 0)} in the typical city and by up to ${f.pct(valErr.p80, 0)} in 8 of 10 cities; rural districts can differ more.`,
+                    `an den 37 Städten mit Inseratsdaten getestet, lag diese Regel in der typischen Stadt ${f.pct(valErr.med, 0)} neben der echten Angebotsmiete und in 8 von 10 Städten höchstens ${f.pct(valErr.p80, 0)}; Landkreise können stärker abweichen.`)}</>}</p>
               <button className="chip" style={{ marginTop: 10 }} onClick={() => setSel(null)}>{t("Clear selection", "Auswahl aufheben")}</button>
             </div>
           ) : (
             <p className="note" style={{ marginBottom: 12 }}>{t("Tip: click any district on the map to see its estimate in words.", "Tipp: Klicken Sie einen Kreis auf der Karte an, um seine Schätzung in Worten zu sehen.")}</p>
           )}
           <p className="figure-title">{t("Matches, largest population first", "Treffer, größte Bevölkerung zuerst")}</p>
-          <div className="tablewrap" style={{ maxHeight: 560, overflowY: "auto", marginTop: 8 }}>
+          <div className="tablewrap" tabIndex={0} style={{ maxHeight: 560, overflowY: "auto", marginTop: 8 }}>
             <table>
               <thead><tr><th>{t("District", "Kreis")}</th><th className="num">{t("Est. rent (average)", "Gesch. Miete (Schnitt)")}</th><th className="num">{t("To spare", "Übrig")}</th></tr></thead>
               <tbody>

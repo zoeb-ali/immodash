@@ -1,0 +1,61 @@
+# Production monitor (audit OPS-2, DE-6): every day, check that the live site answers and that its data snapshot is
+# less than 8 days old. A failure sends GitHub's standard failure email, so a missed weekly refresh (like the
+# one on 12 October 2026) is noticed within a day.
+name: monitor
+
+on:
+  schedule:
+    - cron: "41 7 * * *"   # daily 07:41 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://immodash-virid.vercel.app' }}
+    steps:
+      - name: Pages answer
+        run: |
+          for path in / /de /cities/berlin /map /methodology /robots.txt /sitemap.xml; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL$path")
+            echo "$path -> $code"
+            test "$code" = "200"
+          done
+      - name: Snapshot is fresh
+        run: |
+          curl -sf "$SITE_URL/data/meta.json" -o meta.json
+          python3 - <<'PY'
+          import json, datetime as dt
+          m = json.load(open("meta.json"))
+          age = (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(m["generated_at"])).days
+          print(f"snapshot generated {m['generated_at']} ({age} days ago), data to {m['latest_month']}")
+          if age > 8:
+              raise SystemExit(f"Snapshot is {age} days old: the weekly refresh has not published. Check Actions -> refresh-site.")
+          PY
+
+  new-editions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write   # only to open a reminder issue
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.11"
+      - run: pip install requests==2.32.* && pip install --no-deps -e .
+      - name: Look for newer source editions (DE-6)
+        id: check
+        run: python scripts/check_editions.py | tee editions.txt
+      - name: Open a reminder issue
+        if: failure() && steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue list --state open --search "New source edition in:title" --json number | grep -q '"number"' \
+            || gh issue create --title "New source edition available" --body-file editions.txt
