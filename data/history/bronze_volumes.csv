@@ -1,0 +1,13 @@
+run_id,run_at,table,rows,previous_rows,change_pct
+fdb2c3d53529,2026-11-17T18:41:14+00:00,zensus_rent_by_rooms,3200,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,zensus_vacancy,400,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,zensus_rent_by_size,4400,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,zensus_bezirke_rent,19,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,zensus_grid_rent_1km,135516,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,zensus_grid_rent_100m,245366,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,geo_kreise_outline_3035,400,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,vgrdl_income_population,38628,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,greix_city_rents,18696,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,greix_rent_vs_sales,2838,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,bundesbank_mortgage_rate,285,,
+fdb2c3d53529,2026-11-17T18:41:14+00:00,geo_kreise,401,,
