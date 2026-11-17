@@ -6,7 +6,7 @@ duckdb>=1.1
 sqlalchemy>=2.0
 duckdb-engine>=0.13
 psycopg[binary]>=3.1
-pyproj>=3.6
+pyproj>=3.7.2
 shapely>=2.0
 # Intelligence layer
 lightgbm>=4.3
