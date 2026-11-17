@@ -35,6 +35,6 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.6",
     "playwright-core": "^1.63.0",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.2"
   }
 }
