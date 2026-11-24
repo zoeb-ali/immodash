@@ -2,7 +2,7 @@
 pandas>=2.2
 openpyxl>=3.1
 requests>=2.31
-duckdb>=1.1
+duckdb>=2.0.1
 sqlalchemy>=2.0
 duckdb-engine>=0.13
 psycopg[binary]>=3.1
